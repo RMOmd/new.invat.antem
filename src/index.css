@@ -1,0 +1,610 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Original ANTEM course warm styling */
+.color_text_bg {
+  margin: 1.25rem 0;
+  width: 100%;
+}
+
+.color_text_bg div {
+  background-color: #ffd8b3 !important;
+  color: #4a3b47 !important;
+  border-radius: 1rem !important;
+  padding: 1.25rem 1.5rem !important;
+  line-height: 1.6 !important;
+  font-size: 0.95rem !important;
+  display: inline-block;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: none !important;
+}
+
+/* Hidden tooltip templates from Moodle - must be hidden to avoid duplicate text */
+.tooltip_templates,
+.tooltip_templates span,
+span[id^="tooltip_content"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Icons */
+.text_icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235c4d58'%3E%3Cpath d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+.play_icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+/* Ensure images from course don't overflow on mobile and look sharp */
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 1rem;
+  margin: 1.25rem auto;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Inline audio players matching original course placement */
+.prose audio {
+  width: 100% !important;
+  max-width: 600px !important;
+  margin: 1rem auto 1.5rem auto !important;
+  display: block !important;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ========================================================
+   Mobile-First Responsive Cloze Cards Grid
+   Transforms raw table layouts into modern card grids
+======================================================== */
+.cloze-grid-wrapper {
+  margin: 1.5rem 0;
+  width: 100%;
+}
+
+.cloze-section-header {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1e293b;
+  margin: 1.25rem 0 0.75rem 0;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.cloze-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .cloze-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .cloze-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.cloze-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 1.25rem;
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  min-width: 0;
+}
+
+.cloze-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+.cloze-card-img {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  margin-bottom: 0.85rem;
+}
+
+.cloze-card-img img {
+  max-height: 150px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  margin: 0 auto;
+  border-radius: 0.75rem;
+  box-shadow: none !important;
+}
+
+.cloze-card-text {
+  width: 100%;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 2.4;
+  display: block;
+  padding: 0.75rem 1rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+}
+
+.cloze-card-header {
+  width: 100%;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1e3a8a;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  text-align: center;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* ========================================================
+   Modern Inline Inputs & Dropdown Selects for GapBox
+   Mobile-friendly: compact min-width so text never crushes
+======================================================== */
+.prose .GapSpan {
+  display: inline-flex !important;
+  align-items: center;
+  white-space: nowrap !important;
+  vertical-align: middle;
+}
+
+.prose .GapBox {
+  display: inline-block !important;
+  font-size: 1rem !important;
+  font-weight: 600;
+  padding: 5px 10px !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  outline: none;
+  transition: all 0.2s ease;
+  min-width: 4rem !important;
+  max-width: 100% !important;
+  width: auto;
+  margin: 0 4px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.prose select[id^="Gap"],
+.prose select.GapBox {
+  display: inline-block !important;
+  font-size: 0.95rem !important;
+  font-weight: 600;
+  padding: 5px 8px !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  outline: none;
+  transition: all 0.2s ease;
+  min-width: 5rem !important;
+  max-width: 100% !important;
+  width: auto;
+  margin: 0 4px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.prose .GapBox:focus,
+.prose select[id^="Gap"]:focus,
+.prose select.GapBox:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+.prose .GapBox.gap-correct,
+.prose select[id^="Gap"].gap-correct,
+.prose select.GapBox.gap-correct {
+  border-color: #10b981 !important;
+  background-color: #ecfdf5 !important;
+  color: #065f46 !important;
+}
+
+.prose .GapBox.gap-wrong,
+.prose select[id^="Gap"].gap-wrong,
+.prose select.GapBox.gap-wrong {
+  border-color: #f43f5e !important;
+  background-color: #fff1f2 !important;
+  color: #9f1239 !important;
+}
+
+/* Hide old HotPot submit forms and buttons inside raw HTML so our modern UI handles them */
+.prose form,
+.prose .Feedback,
+.prose #FeedbackDiv,
+.prose #InstructionsDiv,
+.prose #ExerciseTitle,
+.prose input[type="button"],
+.prose input[type="submit"] {
+  display: none !important;
+}
+
+/* ========================================================
+   ANTEM Warm Signature Theme for Tables & Datagrids
+   Matching original course styling (#FFC78E)
+======================================================== */
+.prose {
+  overflow-x: hidden;
+  word-break: break-word;
+}
+
+.datagrid,
+.prose .datagrid {
+  display: block !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  border: 1.5px solid #FFC78E !important;
+  border-radius: 16px !important;
+  margin: 1.25rem auto !important;
+  box-shadow: 0 2px 8px rgba(255, 199, 142, 0.25) !important;
+  background-color: #ffffff !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.datagrid table,
+.prose .datagrid table {
+  display: table !important;
+  border-collapse: collapse !important;
+  text-align: left !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.datagrid table td,
+.datagrid table th,
+.prose .datagrid table td,
+.prose .datagrid table th {
+  padding: 10px 16px !important;
+  border-left: 1px solid #FFC78E !important;
+  border-bottom: 1px solid #ffe8cc !important;
+  color: #3f333c !important;
+  font-size: 0.95rem !important;
+  line-height: 1.6 !important;
+  vertical-align: middle !important;
+}
+
+.datagrid table tr.alt td,
+.datagrid table tbody .alt td,
+.datagrid table thead th,
+.prose .datagrid table tr.alt td,
+.prose .datagrid table tbody .alt td,
+.prose .datagrid table thead th {
+  background-color: #FFC78E !important;
+  color: #4a3b47 !important;
+  font-weight: 700 !important;
+  border-left: 1px solid #ffffff !important;
+  border-bottom: 1.5px solid #ffb366 !important;
+}
+
+.datagrid table tbody td:first-child,
+.datagrid table tr.alt td:first-child,
+.prose .datagrid table tbody td:first-child,
+.prose .datagrid table tr.alt td:first-child {
+  border-left: none !important;
+}
+
+.datagrid table tbody tr:last-child td,
+.prose .datagrid table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Also style any standard tables (vocabulary, grammar, conjugations) with the warm theme */
+.prose table.simple_table,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border: 1.5px solid #FFC78E !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  margin: 1.5rem auto !important;
+  box-shadow: 0 2px 8px rgba(255, 199, 142, 0.2) !important;
+  background-color: #ffffff !important;
+  width: 100% !important;
+}
+
+.prose table.simple_table th,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) th,
+.prose table.simple_table tr:first-child th,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) thead tr th,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) tr.alt td {
+  background-color: #FFC78E !important;
+  color: #4a3b47 !important;
+  font-weight: 700 !important;
+  padding: 10px 16px !important;
+  border-bottom: 1.5px solid #FFC78E !important;
+  border-left: 1px solid #ffffff !important;
+}
+
+.prose table.simple_table td,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) td {
+  padding: 10px 16px !important;
+  border-left: 1px solid #FFC78E !important;
+  border-bottom: 1px solid #ffe8cc !important;
+  color: #3f333c !important;
+  vertical-align: middle !important;
+}
+
+.prose table.simple_table tr td:first-child,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) tr td:first-child,
+.prose table.simple_table tr th:first-child,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) tr th:first-child {
+  border-left: none !important;
+}
+
+.prose table.simple_table tr:last-child td,
+.prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* ========================================================
+   Responsive Cloze Image-Card Grid (Mobile-First)
+   Used for exercises where pictures are matched with
+   dropdowns or inputs (e.g. Act 2265, 2264, 2133, 2513, etc.)
+======================================================== */
+.prose .cloze-image-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+  margin: 1.5rem auto !important;
+  max-width: 900px !important;
+  width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .prose .cloze-image-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .prose .cloze-image-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+/* For wider sentence items (like Act 2133) */
+.prose .cloze-image-grid.sentence-grid {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+}
+
+@media (min-width: 640px) {
+  .prose .cloze-image-grid.sentence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .prose .cloze-image-grid.sentence-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+.prose .cloze-image-card {
+  background: #ffffff !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  padding: 0.85rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+  margin: 0 !important;
+  min-width: 0 !important;
+  text-align: center !important;
+}
+
+.prose .cloze-image-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.08) !important;
+}
+
+.prose .cloze-image-card .card-img-wrap {
+  width: 100% !important;
+  height: 125px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 0.75rem !important;
+  padding: 0.25rem !important;
+}
+
+@media (min-width: 640px) {
+  .prose .cloze-image-card .card-img-wrap {
+    height: 145px !important;
+  }
+}
+
+.prose .cloze-image-card .card-img-wrap img {
+  max-height: 100% !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: 0 auto !important;
+  border-radius: 8px !important;
+}
+
+.prose .cloze-image-card .card-control-wrap {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  font-size: 0.95rem !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  line-height: 1.5 !important;
+}
+
+.prose .cloze-image-card .card-control-wrap.sentence-mode {
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  font-size: 1rem !important;
+  gap: 0.25rem !important;
+}
+
+.prose .cloze-image-card .card-control-wrap .GapSpan {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0.25rem 0 !important;
+}
+
+.prose .cloze-image-card .card-control-wrap.sentence-mode .GapSpan {
+  width: auto !important;
+  display: inline-flex !important;
+  margin: 0 2px !important;
+}
+
+.prose .cloze-image-card select[id^="Gap"],
+.prose .cloze-image-card select.GapBox {
+  width: 100% !important;
+  max-width: 100% !important;
+  font-size: 0.9rem !important;
+  text-align: center !important;
+  text-align-last: center !important;
+  padding: 6px 6px !important;
+  border-radius: 8px !important;
+  margin: 0 !important;
+}
+
+.prose .cloze-image-card input[id^="Gap"],
+.prose .cloze-image-card input.GapBox {
+  min-width: 3.5rem !important;
+  max-width: 6.5rem !important;
+  padding: 4px 6px !important;
+  font-size: 0.95rem !important;
+  text-align: center !important;
+  border-radius: 8px !important;
+  margin: 0 4px !important;
+}
+
+/* On small screens, keep any un-transformed tables horizontally scrollable without breaking viewport */
+@media (max-width: 640px) {
+  .prose table:not(.center_img_table):not(.cloze-grid table) {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .datagrid,
+  .prose .datagrid {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 12px !important;
+    margin: 1rem 0 !important;
+    width: 100% !important;
+  }
+
+  .datagrid table,
+  .prose .datagrid table {
+    display: table !important;
+    width: 100% !important;
+    min-width: max-content !important;
+    margin: 0 !important;
+  }
+
+  .datagrid table td,
+  .datagrid table th,
+  .prose .datagrid table td,
+  .prose .datagrid table th {
+    padding: 8px 10px !important;
+    font-size: 0.85rem !important;
+    white-space: nowrap !important;
+    line-height: 1.4 !important;
+  }
+
+  .prose table.simple_table td,
+  .prose table.simple_table th {
+    padding: 8px 10px !important;
+    font-size: 0.85rem !important;
+    white-space: nowrap !important;
+  }
+
+  /* Specifically for pure image tables like center_img_table: allow wrapping */
+  .prose table.center_img_table {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .prose table.center_img_table tbody,
+  .prose table.center_img_table tr {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    border: none !important;
+  }
+
+  .prose table.center_img_table td {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1 1 40%;
+    min-width: 120px;
+    max-width: 180px;
+    border: none !important;
+    padding: 0.25rem;
+  }
+}
