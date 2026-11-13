@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
-import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw } from 'lucide-react';
+import { getTelegramConfig, saveTelegramConfig, isTelegramConfigured, sendTelegramMessage } from '../lib/telegram';
+import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw, Bell, Settings, Check, X } from 'lucide-react';
 
 interface ParsedFeedback {
   summary: string;
@@ -156,6 +157,14 @@ export const SubmissionsView: React.FC = () => {
   const [aiError, setAiError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Telegram Notifications State
+  const [showTgModal, setShowTgModal] = useState(false);
+  const [tgToken, setTgToken] = useState(() => getTelegramConfig().botToken);
+  const [tgChatId, setTgChatId] = useState(() => getTelegramConfig().chatId);
+  const [tgTestStatus, setTgTestStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [isTgTesting, setIsTgTesting] = useState(false);
+  const isTgReady = isTelegramConfigured();
+
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
 
   // If student, filter by their own submissions (by userId or userEmail); if teacher/admin, show all
@@ -181,6 +190,33 @@ export const SubmissionsView: React.FC = () => {
     setFeedbackInput('');
   };
 
+  const handleSaveTelegram = () => {
+    saveTelegramConfig(tgToken, tgChatId);
+    setTgTestStatus({ ok: true, msg: 'Setările Telegram au fost salvate cu succes!' });
+  };
+
+  const handleTestTelegram = async () => {
+    if (!tgToken.trim() || !tgChatId.trim()) {
+      setTgTestStatus({ ok: false, msg: 'Introduceți mai întâi Bot Token și Chat ID.' });
+      return;
+    }
+    saveTelegramConfig(tgToken, tgChatId);
+    setIsTgTesting(true);
+    setTgTestStatus(null);
+    try {
+      const ok = await sendTelegramMessage('🔔 <b>Test Notificare ANTEM</b>\n\nConexiunea la botul Telegram a fost configurată cu succes! Veți primi aici alerte când studenții trimit teme.');
+      if (ok) {
+        setTgTestStatus({ ok: true, msg: 'Mesaj de test expediat cu succes în Telegram!' });
+      } else {
+        setTgTestStatus({ ok: false, msg: 'Eroare la trimiterea mesajului. Verificați Token-ul și Chat ID-ul.' });
+      }
+    } catch (e: any) {
+      setTgTestStatus({ ok: false, msg: e?.message || 'Eroare conexiune Telegram' });
+    } finally {
+      setIsTgTesting(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 pb-28">
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-xs">
@@ -193,7 +229,24 @@ export const SubmissionsView: React.FC = () => {
               {isTeacher ? t('subs_teacher_desc') : t('subs_student_desc')}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2">
+            {isTeacher && (
+              <button
+                type="button"
+                onClick={() => setShowTgModal(true)}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isTgReady
+                    ? 'bg-sky-50 border-sky-200 text-sky-800 hover:bg-sky-100'
+                    : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+                }`}
+                title="Configurare Notificări Telegram"
+              >
+                <Bell className={`w-3.5 h-3.5 ${isTgReady ? 'text-sky-600' : 'text-amber-600'}`} />
+                <span className="hidden sm:inline">{isTgReady ? 'Telegram: Activ' : 'Telegram Bot'}</span>
+                <span className="sm:hidden">TG</span>
+              </button>
+            )}
+
             <button
               onClick={handleManualRefresh}
               disabled={isRefreshing}
@@ -215,6 +268,103 @@ export const SubmissionsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Telegram Configuration Modal for Teachers/Admins */}
+      {showTgModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Notificări Telegram</h3>
+                  <p className="text-xs text-slate-500">Primiți alerte pe telefon când studenții trimit teme</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTgModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600">
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  1. Telegram Bot Token:
+                </label>
+                <input
+                  type="text"
+                  value={tgToken}
+                  onChange={e => setTgToken(e.target.value)}
+                  placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  Obțineți de la <b>@BotFather</b> în Telegram (comanda /newbot)
+                </span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  2. Chat ID (ID-ul dvs. personal sau grup):
+                </label>
+                <input
+                  type="text"
+                  value={tgChatId}
+                  onChange={e => setTgChatId(e.target.value)}
+                  placeholder="Ex: 987654321 sau -100123456789"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  Aflați ID-ul scriind botului <b>@userinfobot</b> în Telegram
+                </span>
+              </div>
+
+              {tgTestStatus && (
+                <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                  tgTestStatus.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
+                }`}>
+                  {tgTestStatus.ok ? <Check className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />}
+                  <span>{tgTestStatus.msg}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+              <button
+                type="button"
+                onClick={handleTestTelegram}
+                disabled={isTgTesting}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isTgTesting ? 'Se expediază...' : 'Trimite mesaj de test'}
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTgModal(false)}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                >
+                  Închide
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTelegram}
+                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                >
+                  Salvează setările
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {visibleSubmissions.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-500 shadow-2xs">

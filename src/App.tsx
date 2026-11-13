@@ -132,9 +132,11 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const pendingSubmissionsCount = (currentUser?.role === 'teacher' || currentUser?.role === 'admin')
+  const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
+  const currentEmail = currentUser?.email?.toLowerCase();
+  const submissionsBadgeCount = isTeacher
     ? allSubmissions.filter(s => s.status === 'pending').length
-    : 0;
+    : allSubmissions.filter(s => (s.userId === currentUser?.id || (currentEmail && s.userEmail.toLowerCase() === currentEmail)) && s.status === 'reviewed').length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
@@ -189,9 +191,11 @@ const AppContent: React.FC = () => {
           >
             <Send className="w-4 h-4" />
             {t('nav_submissions')}
-            {pendingSubmissionsCount > 0 && (
-              <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {pendingSubmissionsCount}
+            {submissionsBadgeCount > 0 && (
+              <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                isTeacher ? 'bg-rose-500' : 'bg-emerald-500'
+              }`}>
+                {submissionsBadgeCount}
               </span>
             )}
           </button>
@@ -263,7 +267,8 @@ const AppContent: React.FC = () => {
             setSelectedActivity(null);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          pendingSubmissionsCount={pendingSubmissionsCount}
+          pendingSubmissionsCount={submissionsBadgeCount}
+          badgeColor={isTeacher ? 'rose' : 'emerald'}
         />
       )}
     </div>

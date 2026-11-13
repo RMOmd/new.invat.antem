@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { ActivityProgress, AssignmentSubmission, AIEvaluationResult } from '../types/course';
+import { notifyNewSubmission, notifyReviewedSubmission } from '../lib/telegram';
 
 export type UserRole = 'student' | 'teacher' | 'admin' | 'demo';
 
@@ -314,26 +315,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Listen to remote submissions and subscribe to Supabase Realtime changes
+  // Listen to remote submissions and subscribe to Supabase Realtime changes + Auto-sync
   useEffect(() => {
     fetchRemoteSubmissions();
 
-    const supabase = getSupabase();
-    if (!supabase) return;
+    // 1. Auto-fetch on window focus and visibility change (e.g. switching back to tab, unlocking phone)
+    const onFocus = () => fetchRemoteSubmissions();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchRemoteSubmissions();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
-    const channel = supabase
-      .channel('submissions_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'submissions' },
-        () => {
-          fetchRemoteSubmissions();
-        }
-      )
-      .subscribe();
+    // 2. Polling interval every 25 seconds for mobile devices where WebSockets sleep
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchRemoteSubmissions();
+      }
+    }, 25000);
+
+    // 3. Supabase Realtime channel
+    const supabase = getSupabase();
+    let channel: any = null;
+    if (supabase) {
+      channel = supabase
+        .channel('submissions_realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'submissions' },
+          () => {
+            fetchRemoteSubmissions();
+          }
+        )
+        .subscribe();
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      clearInterval(pollInterval);
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [fetchRemoteSubmissions, currentUser]);
 
@@ -658,9 +683,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Supabase submit error', e);
       }
     }
+
+    // Notify teacher via Telegram Bot (if configured)
+    notifyNewSubmission({
+      userName: submission.userName,
+      userEmail: submission.userEmail,
+      activityTitle: submission.activityTitle,
+      submissionText: submission.submissionText
+    }).catch(err => console.warn('Telegram notification notice:', err));
   };
 
   const reviewSubmission = async (submissionId: string, grade: number, feedback: string) => {
+    const targetSub = allSubmissions.find(s => s.id === submissionId);
+    if (targetSub) {
+      notifyReviewedSubmission({
+        userName: targetSub.userName,
+        userEmail: targetSub.userEmail,
+        activityTitle: targetSub.activityTitle,
+        grade,
+        feedback
+      }).catch(err => console.warn('Telegram review notice:', err));
+    }
+
     setAllSubmissions(prev => {
       const updated = prev.map(s => {
         if (s.id === submissionId) {

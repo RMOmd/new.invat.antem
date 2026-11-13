@@ -8,12 +8,14 @@ interface BottomNavProps {
   currentTab: TabType;
   onTabChange: (tab: TabType) => void;
   pendingSubmissionsCount?: number;
+  badgeColor?: 'rose' | 'emerald';
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   currentTab,
   onTabChange,
-  pendingSubmissionsCount = 0
+  pendingSubmissionsCount = 0,
+  badgeColor = 'rose'
 }) => {
   const { t } = useLanguage();
 
@@ -42,7 +44,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <div className="relative">
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
                 {tab.badge && tab.badge > 0 ? (
-                  <span className="absolute -top-1.5 -right-2 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  <span className={`absolute -top-1.5 -right-2 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${
+                    badgeColor === 'emerald' ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`}>
                     {tab.badge}
                   </span>
                 ) : null}
