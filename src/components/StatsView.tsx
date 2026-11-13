@@ -41,9 +41,17 @@ export const StatsView: React.FC<StatsViewProps> = ({ courseData, onSelectActivi
                 {currentUser?.name || t('role_student')}
               </h1>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                currentUser?.role === 'teacher' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                currentUser?.role === 'admin'
+                  ? 'bg-rose-100 text-rose-700'
+                  : currentUser?.role === 'teacher'
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'bg-blue-100 text-blue-700'
               }`}>
-                {currentUser?.role === 'teacher' ? t('role_teacher') : t('role_student')}
+                {currentUser?.role === 'admin'
+                  ? t('role_admin')
+                  : currentUser?.role === 'teacher'
+                  ? t('role_teacher')
+                  : t('role_student')}
               </span>
             </div>
             <p className="text-xs text-slate-500 font-mono mt-0.5">{currentUser?.email}</p>

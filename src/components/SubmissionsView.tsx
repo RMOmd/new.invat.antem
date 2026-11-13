@@ -10,7 +10,7 @@ export const SubmissionsView: React.FC = () => {
   const [gradeInput, setGradeInput] = useState<number>(10);
   const [feedbackInput, setFeedbackInput] = useState('');
 
-  const isTeacher = currentUser?.role === 'teacher';
+  const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
 
   // If student, filter by their own submissions; if teacher, show all
   const visibleSubmissions = isTeacher
@@ -31,9 +31,13 @@ export const SubmissionsView: React.FC = () => {
             {isTeacher ? t('subs_teacher_title') : t('subs_student_title')}
           </h1>
           <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-            isTeacher ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+            currentUser?.role === 'admin'
+              ? 'bg-rose-100 text-rose-800'
+              : isTeacher
+              ? 'bg-purple-100 text-purple-800'
+              : 'bg-blue-100 text-blue-800'
           }`}>
-            {isTeacher ? t('role_teacher') : t('role_student')}
+            {currentUser?.role === 'admin' ? t('role_admin') : isTeacher ? t('role_teacher') : t('role_student')}
           </span>
         </div>
         <p className="text-sm text-slate-500">

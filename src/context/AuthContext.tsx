@@ -2,11 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { ActivityProgress, AssignmentSubmission } from '../types/course';
 
+export type UserRole = 'student' | 'teacher' | 'admin';
+
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
-  role: 'student' | 'teacher';
+  role: UserRole;
   password?: string;
   createdAt?: string;
 }
@@ -18,8 +20,11 @@ interface AuthContextType {
   allSubmissions: AssignmentSubmission[];
   loginAs: (user: UserProfile) => void;
   loginWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  registerWithCredentials: (name: string, email: string, password: string, role: 'student' | 'teacher') => Promise<{ success: boolean; error?: string }>;
-  createNewUser: (name: string, email: string, role: 'student' | 'teacher', password?: string) => UserProfile;
+  registerWithCredentials: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  createNewUser: (name: string, email: string, role: UserRole, password?: string) => UserProfile;
+  changeUserRole: (userId: string, newRole: UserRole) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
+  refreshUsersList: () => Promise<void>;
   logout: () => void;
   saveProgress: (progress: ActivityProgress) => Promise<void>;
   submitAssignment: (activityId: string, activityTitle: string, text: string) => Promise<void>;
@@ -32,10 +37,11 @@ const LOCAL_USERS_KEY = 'romanian_platform_users';
 const LOCAL_CURRENT_USER_KEY = 'romanian_platform_current_user';
 const LOCAL_SUBMISSIONS_KEY = 'romanian_platform_submissions';
 
-const INITIAL_DEMO_USERS: UserProfile[] = [
+export const INITIAL_DEMO_USERS: UserProfile[] = [
+  { id: 'usr-admin', name: 'Administrator', email: 'admin@antem.org', role: 'admin', password: 'admin123', createdAt: '2026-01-01' },
+  { id: 'usr-teacher', name: 'Profesor ANTEM', email: 'teacher@antem.org', role: 'teacher', password: 'password123', createdAt: '2026-01-01' },
   { id: 'usr-student-1', name: 'Danila Student', email: 'danila@example.com', role: 'student', password: 'password123', createdAt: '2026-01-01' },
-  { id: 'usr-student-2', name: 'Elena Cojocaru', email: 'elena@example.com', role: 'student', password: 'password123', createdAt: '2026-01-01' },
-  { id: 'usr-teacher', name: 'Profesor ANTEM', email: 'teacher@antem.org', role: 'teacher', password: 'password123', createdAt: '2026-01-01' }
+  { id: 'usr-student-2', name: 'Elena Cojocaru', email: 'elena@example.com', role: 'student', password: 'password123', createdAt: '2026-01-01' }
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -45,8 +51,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Ensure every user has a default password if missing
-          return parsed.map(u => ({ ...u, password: u.password || 'password123' }));
+          const list: UserProfile[] = parsed.map(u => ({ ...u, password: u.password || 'password123' }));
+          // Ensure admin account always exists
+          if (!list.some(u => u.email.toLowerCase() === 'admin@antem.org' || u.role === 'admin')) {
+            list.unshift(INITIAL_DEMO_USERS[0]);
+          }
+          return list;
         }
       } catch (e) {}
     }
@@ -121,6 +131,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
+  // Sync users list from Supabase if currentUser is admin
+  const refreshUsersList = async () => {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('profiles').select('*');
+        if (!error && data && data.length > 0) {
+          setUsersList(prev => {
+            const map = new Map<string, UserProfile>();
+            prev.forEach(u => map.set(u.email.toLowerCase(), u));
+            data.forEach((p: any) => {
+              const existing = map.get(p.email.toLowerCase());
+              map.set(p.email.toLowerCase(), {
+                id: p.id,
+                email: p.email,
+                name: p.name || p.email,
+                role: (p.role as UserRole) || 'student',
+                password: existing?.password || 'password123',
+                createdAt: p.created_at
+              });
+            });
+            const combined = Array.from(map.values());
+            localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(combined));
+            return combined;
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to sync profiles from Supabase', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      refreshUsersList();
+    }
+  }, [currentUser]);
+
   const loginAs = (user: UserProfile) => {
     setCurrentUser(user);
     localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(user));
@@ -139,13 +187,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password: cleanPass
         });
         if (!error && data.user) {
+          let resolvedRole: UserRole = 'student';
+          // Check profile table for actual role (admin / teacher / student)
+          const { data: profileRow } = await supabase
+            .from('profiles')
+            .select('role, name')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profileRow?.role) {
+            resolvedRole = profileRow.role as UserRole;
+          } else if (cleanEmail === 'admin@antem.org') {
+            resolvedRole = 'admin';
+          } else if (data.user.user_metadata?.role) {
+            resolvedRole = data.user.user_metadata.role as UserRole;
+          }
+
           const profile: UserProfile = {
             id: data.user.id,
             email: data.user.email || cleanEmail,
-            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilizator',
-            role: data.user.user_metadata?.role === 'teacher' ? 'teacher' : 'student',
+            name: profileRow?.name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilizator',
+            role: resolvedRole,
             password: cleanPass
           };
+
+          // Save to local users list
+          setUsersList(prev => {
+            const filtered = prev.filter(u => u.email.toLowerCase() !== cleanEmail);
+            const updated = [...filtered, profile];
+            localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+            return updated;
+          });
+
           loginAs(profile);
           return { success: true };
         }
@@ -177,12 +250,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const registerWithCredentials = async (
     name: string,
     email: string,
-    pass: string,
-    role: 'student' | 'teacher'
+    pass: string
   ): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
     const cleanPass = pass.trim();
+    // Rule: Nobody can register as teacher or admin! Everyone registers as student!
+    const role: UserRole = 'student';
 
     if (!cleanName) return { success: false, error: 'Introduceți numele și prenumele.' };
     if (!cleanEmail || !cleanEmail.includes('@')) return { success: false, error: 'Introduceți o adresă de e-mail validă.' };
@@ -207,13 +281,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: cleanEmail,
           password: cleanPass,
           options: {
-            data: { name: cleanName, role }
+            data: { name: cleanName, role: 'student' }
           }
         });
         if (error) {
           console.warn('Supabase signup notice:', error.message);
         } else if (data.user) {
           userId = data.user.id;
+          // Ensure profile is saved with role 'student'
+          try {
+            await supabase.from('profiles').upsert({
+              id: userId,
+              email: cleanEmail,
+              name: cleanName,
+              role: 'student'
+            });
+          } catch {}
         }
       } catch (err) {
         console.warn('Supabase signup error fallback:', err);
@@ -224,7 +307,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: userId,
       name: cleanName,
       email: cleanEmail,
-      role,
+      role: 'student',
       password: cleanPass,
       createdAt: new Date().toISOString()
     };
@@ -237,10 +320,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const changeUserRole = async (userId: string, newRole: UserRole) => {
+    const updated = usersList.map(u => {
+      if (u.id === userId) {
+        return { ...u, role: newRole };
+      }
+      return u;
+    });
+    setUsersList(updated);
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+
+    if (currentUser && currentUser.id === userId) {
+      const updatedCurrent = { ...currentUser, role: newRole };
+      setCurrentUser(updatedCurrent);
+      localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+      } catch (err) {
+        console.error('Supabase update role error', err);
+      }
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    const updated = usersList.filter(u => u.id !== userId);
+    setUsersList(updated);
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').delete().eq('id', userId);
+      } catch (err) {
+        console.error('Supabase delete user error', err);
+      }
+    }
+  };
+
   const createNewUser = (
     name: string,
     email: string,
-    role: 'student' | 'teacher',
+    role: UserRole = 'student',
     password = 'password123'
   ): UserProfile => {
     const newUser: UserProfile = {
@@ -254,7 +378,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = [...usersList, newUser];
     setUsersList(updated);
     localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
-    loginAs(newUser);
     return newUser;
   };
 
@@ -383,6 +506,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithCredentials,
         registerWithCredentials,
         createNewUser,
+        changeUserRole,
+        deleteUser,
+        refreshUsersList,
         logout,
         saveProgress,
         submitAssignment,

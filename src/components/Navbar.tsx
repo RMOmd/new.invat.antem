@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, UserRole } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import {
@@ -9,7 +9,22 @@ import {
   clearSupabaseConfig,
   testSupabaseConnection
 } from '../lib/supabase';
-import { User, Settings, Database, Plus, Check, LogOut, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  User,
+  Settings,
+  Database,
+  Check,
+  LogOut,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Shield,
+  ShieldCheck,
+  GraduationCap,
+  Award,
+  Search,
+  Trash2
+} from 'lucide-react';
 
 interface NavbarProps {
   onBackToCourse?: () => void;
@@ -17,15 +32,16 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise }) => {
-  const { currentUser, usersList, loginAs, createNewUser, logout } = useAuth();
+  const { currentUser, usersList, changeUserRole, deleteUser, refreshUsersList, logout } = useAuth();
   const { t } = useLanguage();
-  const [showUserModal, setShowUserModal] = useState(false);
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
 
-  // New user form state
-  const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newRole, setNewRole] = useState<'student' | 'teacher'>('student');
+  // Admin search state
+  const [adminSearch, setAdminSearch] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Supabase config state
   const [sbConfig, setSbConfig] = useState(getSavedSupabaseConfig());
@@ -33,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const isConfigured = isSupabaseConfigured();
+  const isAdmin = currentUser?.role === 'admin';
 
   const handleTestConnection = async () => {
     setTestingConnection(true);
@@ -45,26 +62,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
     }
   };
 
-  const handleCreateUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim() || !newEmail.trim()) return;
-    createNewUser(newName.trim(), newEmail.trim(), newRole);
-    setNewName('');
-    setNewEmail('');
-    setShowUserModal(false);
-  };
-
   const handleSaveSbConfig = (e: React.FormEvent) => {
     e.preventDefault();
     saveSupabaseConfig(sbConfig);
   };
+
+  const handleRefreshUsers = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshUsersList();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const filteredUsers = usersList.filter(u =>
+    u.name.toLowerCase().includes(adminSearch.toLowerCase()) ||
+    u.email.toLowerCase().includes(adminSearch.toLowerCase())
+  );
 
   return (
     <>
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={onBackToCourse}>
-            <span className="text-2xl leading-none">🇷🇴</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
             <div>
               <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-none block">
                 Limba Română
@@ -95,14 +117,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
               )}
             </button>
 
-            {/* User profile button */}
+            {/* Admin Panel button (Only visible to admin) */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowAdminModal(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                title={t('admin_panel_title')}
+              >
+                <ShieldCheck className="w-4 h-4 text-rose-600" />
+                <span className="hidden sm:inline">{t('btn_admin_panel')}</span>
+              </button>
+            )}
+
+            {/* Current User Profile button (Opens only their own profile) */}
             <button
               type="button"
-              onClick={() => setShowUserModal(true)}
+              onClick={() => setShowProfileModal(true)}
               className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-xs font-semibold text-slate-800 cursor-pointer"
             >
               <div className={`w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold ${
-                currentUser?.role === 'teacher' ? 'bg-purple-600' : 'bg-blue-600'
+                currentUser?.role === 'admin'
+                  ? 'bg-rose-600'
+                  : currentUser?.role === 'teacher'
+                  ? 'bg-purple-600'
+                  : 'bg-blue-600'
               }`}>
                 {currentUser?.name.charAt(0).toUpperCase() || 'U'}
               </div>
@@ -122,121 +161,229 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
         </div>
       </header>
 
-      {/* User Switcher / Management Modal */}
-      {showUserModal && (
+      {/* USER'S OWN PROFILE MODAL (Only shows their own profile, no other accounts!) */}
+      {showProfileModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
-            <h2 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-600" />
-              {t('user_modal_title')}
-            </h2>
-            <p className="text-xs text-slate-500 mb-4">
-              {t('user_modal_desc')}
-            </p>
-
-            <div className="space-y-2 mb-4 max-h-52 overflow-y-auto">
-              {usersList.map(u => (
-                <div
-                  key={u.id}
-                  onClick={() => {
-                    loginAs(u);
-                    setShowUserModal(false);
-                  }}
-                  className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                    currentUser?.id === u.id
-                      ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20'
-                      : 'border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <div>
-                    <span className="text-sm font-bold text-slate-900 block">{u.name}</span>
-                    <span className="text-xs text-slate-500 font-mono">{u.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                      u.role === 'teacher' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {u.role === 'teacher' ? t('role_teacher') : t('role_student')}
-                    </span>
-                    {currentUser?.id === u.id && <Check className="w-4 h-4 text-blue-600" />}
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-600" />
+                {t('user_profile_modal_title')}
+              </h2>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                currentUser?.role === 'admin'
+                  ? 'bg-rose-100 text-rose-700'
+                  : currentUser?.role === 'teacher'
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                {currentUser?.role === 'admin'
+                  ? t('role_admin')
+                  : currentUser?.role === 'teacher'
+                  ? t('role_teacher')
+                  : t('role_student')}
+              </span>
             </div>
 
-            {/* Logout button */}
-            <div className="mb-4">
+            <p className="text-xs text-slate-500 mb-5">
+              {t('user_profile_modal_desc')}
+            </p>
+
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3 mb-6">
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  {t('auth_name_label')}
+                </span>
+                <span className="text-base font-bold text-slate-900 block">
+                  {currentUser?.name}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  {t('auth_email_label')}
+                </span>
+                <span className="text-sm font-mono text-slate-700 block">
+                  {currentUser?.email}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  {t('auth_account_type_label')}
+                </span>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                  {currentUser?.role === 'admin' && <Shield className="w-4 h-4 text-rose-600" />}
+                  {currentUser?.role === 'teacher' && <Award className="w-4 h-4 text-purple-600" />}
+                  {currentUser?.role === 'student' && <GraduationCap className="w-4 h-4 text-blue-600" />}
+                  <span>
+                    {currentUser?.role === 'admin'
+                      ? t('role_admin')
+                      : currentUser?.role === 'teacher'
+                      ? t('role_teacher')
+                      : t('role_student')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => {
                   logout();
-                  setShowUserModal(false);
+                  setShowProfileModal(false);
                 }}
-                className="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                {t('btn_logout_from')} ({currentUser?.name})
+                <LogOut className="w-4 h-4" />
+                {t('btn_logout')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                {t('btn_close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN PANEL MODAL (Only accessible by Administrator to manage roles) */}
+      {showAdminModal && isAdmin && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-6 h-6 text-rose-600" />
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 leading-tight">
+                    {t('admin_panel_title')}
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    {t('admin_panel_desc')}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRefreshUsers}
+                disabled={isRefreshing}
+                className="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer shrink-0"
+                title="Sincronizează din Supabase"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
 
-            {/* Create new user form */}
-            <form onSubmit={handleCreateUser} className="border-t border-slate-100 pt-4 space-y-3">
-              <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
-                {t('user_modal_add_title')}
-              </span>
+            {/* Search filter */}
+            <div className="relative my-3">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder={t('user_modal_name_ph')}
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                className="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
+                value={adminSearch}
+                onChange={e => setAdminSearch(e.target.value)}
+                placeholder={t('search_users')}
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <input
-                type="email"
-                placeholder={t('user_modal_email_ph')}
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-                className="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <div className="flex gap-4 text-xs font-semibold">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    checked={newRole === 'student'}
-                    onChange={() => setNewRole('student')}
-                  />
-                  {t('role_student')}
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    checked={newRole === 'teacher'}
-                    onChange={() => setNewRole('teacher')}
-                  />
-                  {t('role_teacher')}
-                </label>
-              </div>
+            </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" /> {t('user_modal_btn_create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowUserModal(false)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-                >
-                  {t('btn_close')}
-                </button>
-              </div>
-            </form>
+            {/* Users list */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2 max-h-[50vh]">
+              {filteredUsers.map(u => {
+                const isCurrentAdmin = u.id === currentUser?.id;
+
+                return (
+                  <div
+                    key={u.id}
+                    className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 truncate">
+                          {u.name}
+                        </span>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          u.role === 'admin'
+                            ? 'bg-rose-100 text-rose-700'
+                            : u.role === 'teacher'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {u.role === 'admin'
+                            ? t('role_admin')
+                            : u.role === 'teacher'
+                            ? t('role_teacher')
+                            : t('role_student')}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-mono block truncate">
+                        {u.email}
+                      </span>
+                    </div>
+
+                    {/* Role changer buttons */}
+                    <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                      {!isCurrentAdmin && (
+                        <>
+                          {u.role === 'student' ? (
+                            <button
+                              type="button"
+                              onClick={() => changeUserRole(u.id, 'teacher')}
+                              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                            >
+                              <Award className="w-3.5 h-3.5" />
+                              {t('btn_make_teacher')}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => changeUserRole(u.id, 'student')}
+                              className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                            >
+                              <GraduationCap className="w-3.5 h-3.5" />
+                              {t('btn_make_student')}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Sigur doriți să ștergeți utilizatorul ${u.name}?`)) {
+                                deleteUser(u.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Șterge utilizator"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                      {isCurrentAdmin && (
+                        <span className="text-[10px] text-slate-400 font-semibold italic">
+                          (Contul tău)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAdminModal(false)}
+                className="py-2 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                {t('btn_close')}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -342,4 +489,3 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
     </>
   );
 };
-

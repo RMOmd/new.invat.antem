@@ -29,6 +29,15 @@ export const translations: Record<Language, Record<string, string>> = {
     btn_save_reload: 'Salvează și reîncarcă',
     role_student: 'Student',
     role_teacher: 'Profesor',
+    role_admin: 'Administrator',
+    admin_panel_title: 'Panou de Administrare Utilizatori',
+    admin_panel_desc: 'Doar administratorul poate vizualiza lista utilizatorilor și schimba rolul acestora (ex: promovare în Profesor).',
+    btn_admin_panel: 'Administrare',
+    user_profile_modal_title: 'Profilul Meu',
+    user_profile_modal_desc: 'Informațiile contului dumneavoastră personal.',
+    btn_make_teacher: 'Setează Profesor',
+    btn_make_student: 'Setează Student',
+    search_users: 'Caută utilizator după nume sau e-mail...',
 
     // Modals
     user_modal_title: 'Conturi de utilizator (Profiluri)',
@@ -195,6 +204,15 @@ export const translations: Record<Language, Record<string, string>> = {
     btn_save_reload: 'Сохранить и перезагрузить',
     role_student: 'Студент',
     role_teacher: 'Преподаватель',
+    role_admin: 'Администратор',
+    admin_panel_title: 'Панель управления пользователями',
+    admin_panel_desc: 'Только администратор может просматривать список пользователей и изменять их роли (напр.: перевод студента в преподаватели).',
+    btn_admin_panel: 'Управление',
+    user_profile_modal_title: 'Мой профиль',
+    user_profile_modal_desc: 'Информация о вашей учётной записи.',
+    btn_make_teacher: 'Сделать преподавателем',
+    btn_make_student: 'Сделать студентом',
+    search_users: 'Поиск пользователя по имени или email...',
 
     // Modals
     user_modal_title: 'Профили пользователей',
@@ -361,6 +379,15 @@ export const translations: Record<Language, Record<string, string>> = {
     btn_save_reload: 'Save & reload',
     role_student: 'Student',
     role_teacher: 'Teacher',
+    role_admin: 'Administrator',
+    admin_panel_title: 'User Management Panel',
+    admin_panel_desc: 'Only the administrator can view all users and change their roles (e.g. promote student to teacher).',
+    btn_admin_panel: 'Admin Panel',
+    user_profile_modal_title: 'My Profile',
+    user_profile_modal_desc: 'Your personal account details.',
+    btn_make_teacher: 'Set as Teacher',
+    btn_make_student: 'Set as Student',
+    search_users: 'Search users by name or email...',
 
     // Modals
     user_modal_title: 'User Profiles',

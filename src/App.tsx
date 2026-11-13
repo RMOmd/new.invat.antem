@@ -116,7 +116,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const pendingSubmissionsCount = currentUser?.role === 'teacher'
+  const pendingSubmissionsCount = (currentUser?.role === 'teacher' || currentUser?.role === 'admin')
     ? allSubmissions.filter(s => s.status === 'pending').length
     : 0;
 

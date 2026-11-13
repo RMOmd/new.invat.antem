@@ -35,7 +35,6 @@ export const AuthView: React.FC = () => {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
-  const [regRole, setRegRole] = useState<'student' | 'teacher'>('student');
   const [showRegPassword, setShowRegPassword] = useState(false);
 
   // UI state
@@ -90,7 +89,7 @@ export const AuthView: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await registerWithCredentials(regName, regEmail, regPassword, regRole);
+      const res = await registerWithCredentials(regName, regEmail, regPassword);
       if (!res.success) {
         setErrorMessage(res.error || 'Error');
       } else {
@@ -285,7 +284,11 @@ export const AuthView: React.FC = () => {
                     >
                       <div className="flex items-center gap-2.5">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-2xs ${
-                          u.role === 'teacher' ? 'bg-purple-600' : 'bg-blue-600'
+                          u.role === 'admin'
+                            ? 'bg-rose-600'
+                            : u.role === 'teacher'
+                            ? 'bg-purple-600'
+                            : 'bg-blue-600'
                         }`}>
                           {u.name.charAt(0)}
                         </div>
@@ -301,9 +304,13 @@ export const AuthView: React.FC = () => {
 
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                          u.role === 'teacher' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                          u.role === 'admin'
+                            ? 'bg-rose-100 text-rose-700'
+                            : u.role === 'teacher'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-blue-100 text-blue-700'
                         }`}>
-                          {u.role === 'teacher' ? t('role_teacher') : t('role_student')}
+                          {u.role === 'admin' ? t('role_admin') : u.role === 'teacher' ? t('role_teacher') : t('role_student')}
                         </span>
                         <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
                       </div>
@@ -401,48 +408,6 @@ export const AuthView: React.FC = () => {
                 >
                   {showRegPassword ? t('auth_hide_pass') : t('auth_show_pass')}
                 </button>
-              </div>
-
-              {/* Role Selection */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  {t('auth_account_type_label')}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div
-                    onClick={() => setRegRole('student')}
-                    className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                      regRole === 'student'
-                        ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-500/20'
-                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <GraduationCap className={`w-4 h-4 ${regRole === 'student' ? 'text-blue-600' : 'text-slate-500'}`} />
-                      <span className="text-xs font-bold text-slate-800">{t('role_student')}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500 leading-tight">
-                      {t('auth_student_desc')}
-                    </span>
-                  </div>
-
-                  <div
-                    onClick={() => setRegRole('teacher')}
-                    className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                      regRole === 'teacher'
-                        ? 'border-purple-500 bg-purple-50/70 ring-2 ring-purple-500/20'
-                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Award className={`w-4 h-4 ${regRole === 'teacher' ? 'text-purple-600' : 'text-slate-500'}`} />
-                      <span className="text-xs font-bold text-slate-800">{t('role_teacher')}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500 leading-tight">
-                      {t('auth_teacher_desc')}
-                    </span>
-                  </div>
-                </div>
               </div>
 
               <button
