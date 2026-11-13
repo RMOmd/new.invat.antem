@@ -1451,6 +1451,115 @@ span[id^="tooltip_content"] {
   font-weight: 700 !important;
 }
 
+/* ========================================================
+   Illustrated Food Table Exercise (Act 2308 / 9. A. Pag 1)
+   Big, clear image with matching inputs
+   ======================================================== */
+.food-table-exercise,
+.prose .food-table-exercise {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.25rem !important;
+  max-width: 1000px !important;
+  margin: 1.5rem auto !important;
+  width: 100% !important;
+}
+
+@media (min-width: 768px) {
+  .food-table-exercise,
+  .prose .food-table-exercise {
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+    gap: 2rem !important;
+  }
+}
+
+.food-table-img-wrap {
+  width: 100% !important;
+  background: #ffffff !important;
+  border: 1.5px solid #FFC78E !important;
+  border-radius: 16px !important;
+  padding: 0.75rem !important;
+  box-shadow: 0 2px 8px rgba(255, 199, 142, 0.2) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+@media (min-width: 768px) {
+  .food-table-img-wrap {
+    flex: 1 1 60% !important;
+    padding: 1.25rem !important;
+  }
+}
+
+.food-table-img {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 12px !important;
+  display: block !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  object-fit: contain !important;
+}
+
+.food-table-inputs-card {
+  width: 100% !important;
+  background: #ffffff !important;
+  border: 1.5px solid #FFC78E !important;
+  border-radius: 16px !important;
+  padding: 1.25rem 1rem !important;
+  box-shadow: 0 2px 8px rgba(255, 199, 142, 0.15) !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem 1rem !important;
+}
+
+@media (min-width: 768px) {
+  .food-table-inputs-card {
+    flex: 1 1 45% !important;
+    padding: 1.5rem !important;
+    gap: 1.25rem !important;
+  }
+}
+
+.food-inputs-col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+.food-input-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.food-num {
+  font-weight: 700 !important;
+  font-size: 1.05rem !important;
+  color: #c2410c !important;
+  min-width: 1.5rem !important;
+}
+
+.food-input-row .GapSpan {
+  flex: 1 !important;
+  display: flex !important;
+}
+
+.food-input-row input.GapBox {
+  width: 100% !important;
+  max-width: 100% !important;
+  font-size: 1rem !important;
+  padding: 6px 10px !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  margin: 0 !important;
+  text-align: left !important;
+}
+
 /* On small screens, keep any un-transformed tables horizontally scrollable without breaking viewport */
 @media (max-width: 640px) {
   .prose table:not(.center_img_table):not(.cloze-grid table) {
