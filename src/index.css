@@ -158,6 +158,79 @@
   color: #334155 !important;
 }
 
+/* Pronoun demonstrative grid (2. B. Gramatică / Pag 5) */
+.pronoun-demo-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 1rem !important;
+  max-width: 800px !important;
+  margin: 1.5rem auto !important;
+  width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .pronoun-demo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+.pronoun-demo-card {
+  background: #ffffff !important;
+  border: 1.5px solid #ffc78e !important;
+  border-radius: 16px !important;
+  padding: 1.25rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.pronoun-badge {
+  background: #ffc78e !important;
+  color: #4a3b47 !important;
+  font-weight: 800 !important;
+  font-size: 1rem !important;
+  padding: 4px 16px !important;
+  border-radius: 9999px !important;
+  margin-bottom: 8px !important;
+}
+
+.pronoun-question {
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  color: #334155 !important;
+  margin-bottom: 12px !important;
+}
+
+.pronoun-img-wrap {
+  width: 100% !important;
+  height: 160px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 12px !important;
+}
+
+.pronoun-img {
+  max-height: 100% !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+  border-radius: 12px !important;
+}
+
+.pronoun-dialogue {
+  background: #fff8f0 !important;
+  border: 1px solid #ffe8cc !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  width: 100% !important;
+  font-size: 0.95rem !important;
+  color: #4a3b47 !important;
+  line-height: 1.6 !important;
+}
+
 /* Original ANTEM course warm styling */
 .color_text_bg {
   margin: 1.25rem 0;
