@@ -132,23 +132,63 @@ export const CourseView: React.FC<CourseViewProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 pb-28">
-      {/* Course Banner */}
-      <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 text-white rounded-3xl p-5 sm:p-8 mb-6 shadow-md relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 opacity-10 translate-x-8 translate-y-8 select-none pointer-events-none">
-          <span className="text-9xl">🇲🇩</span>
-        </div>
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            Nivelul A1+ • ANTEM Moldova
+      {/* Course Hero Banner with Stefan cel Mare, Moldovan Flag & Landscape */}
+      <div
+        className="rounded-3xl mb-6 shadow-xl relative overflow-hidden border border-blue-900/30 group"
+        style={{
+          backgroundImage: `
+            linear-gradient(
+              to right,
+              rgba(10, 20, 50, 0.96) 0%,
+              rgba(12, 28, 68, 0.92) 42%,
+              rgba(15, 35, 85, 0.68) 72%,
+              rgba(15, 35, 85, 0.32) 100%
+            ),
+            url('media/stefan_cel_mare_bg.jpg')
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center right'
+        }}
+      >
+        {/* Moldova Flag Tricolor Accent Stripe on Top */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-[#0046AE] via-[#FFD100] to-[#CC092F]" />
+
+        <div className="p-5 sm:p-8 relative z-10">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-900/60 backdrop-blur-md rounded-full text-xs font-bold text-amber-300 border border-amber-400/30 shadow-md mb-3.5">
+            <span className="text-sm">🇲🇩</span>
+            <span>Nivelul A1+ • ANTEM Moldova</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
+
+          {/* Heading */}
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight mb-2.5 drop-shadow-md max-w-xl leading-tight">
             {t('course_banner_title')}
           </h1>
-          <p className="text-blue-100 text-sm sm:text-base max-w-xl">
+
+          {/* Subtitle / Description */}
+          <p className="text-blue-100/90 text-xs sm:text-sm md:text-base max-w-lg mb-5 drop-shadow leading-relaxed font-medium">
             {t('course_banner_desc')}
           </p>
+
+          {/* Feature Pills */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-xl text-xs font-semibold text-white border border-white/15 shadow-2xs transition-colors">
+              <BookOpen className="w-3.5 h-3.5 text-sky-300" />
+              <span>20 de Unități tematice</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-xl text-xs font-semibold text-white border border-white/15 shadow-2xs transition-colors">
+              <Headphones className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Dialoguri & Audio</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/15 backdrop-blur-md rounded-xl text-xs font-semibold text-white border border-white/15 shadow-2xs transition-colors">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>400+ Exerciții interactive</span>
+            </div>
+          </div>
         </div>
+
+        {/* Ambient bottom glow */}
+        <div className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-slate-950/25 to-transparent pointer-events-none" />
       </div>
 
       {/* Search Bar */}
