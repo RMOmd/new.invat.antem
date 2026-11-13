@@ -1322,6 +1322,75 @@ span[id^="tooltip_content"] {
   margin: 0 4px !important;
 }
 
+/* ========================================================
+   Comparison Cards Grid (Act 2290 / 8. B. Gramatică / Pag 4)
+   Responsive illustrated cards with comparative grammar text
+   ======================================================== */
+.comparison-cards-grid,
+.prose .comparison-cards-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 1.25rem !important;
+  max-width: 900px !important;
+  margin: 1.5rem auto !important;
+  width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .comparison-cards-grid,
+  .prose .comparison-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1.5rem !important;
+  }
+}
+
+.comparison-card {
+  background: #ffffff !important;
+  border: 1.5px solid #FFC78E !important;
+  border-radius: 16px !important;
+  padding: 1.25rem 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  box-shadow: 0 2px 8px rgba(255, 199, 142, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+.comparison-card-img {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-bottom: 1rem !important;
+}
+
+.comparison-card-img img {
+  max-width: 200px !important;
+  height: auto !important;
+  border-radius: 12px !important;
+  object-fit: contain !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+.comparison-card-text {
+  width: 100% !important;
+  text-align: center !important;
+  font-size: 0.98rem !important;
+  line-height: 1.6 !important;
+  color: #3f333c !important;
+}
+
+.comparison-card-text p {
+  margin: 0.35rem 0 !important;
+}
+
+.comparison-card-text b {
+  color: #c2410c !important;
+  font-weight: 700 !important;
+}
+
 /* On small screens, keep any un-transformed tables horizontally scrollable without breaking viewport */
 @media (max-width: 640px) {
   .prose table:not(.center_img_table):not(.cloze-grid table) {
@@ -1456,6 +1525,17 @@ span[id^="tooltip_content"] {
     max-width: 180px;
     border: none !important;
     padding: 0.25rem;
+  }
+
+  /* When a cell in center_img_table contains text, allow it full width so text doesn't collapse */
+  .prose table.center_img_table td:not(:has(img)) {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: block !important;
+    text-align: center !important;
+    padding: 0.5rem !important;
+    white-space: normal !important;
   }
 
   /* Responsive styling for two-column dialogue/presentation tables (.color_text_bg) on mobile */
