@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (profileRow?.role) {
             resolvedRole = profileRow.role as UserRole;
-          } else if (cleanEmail === 'admin@antem.org') {
+          } else if (cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com') {
             resolvedRole = 'admin';
           }
 
@@ -320,7 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (profileRow?.role) {
             resolvedRole = profileRow.role as UserRole;
-          } else if (cleanEmail === 'admin@antem.org') {
+          } else if (cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com') {
             resolvedRole = 'admin';
           } else if (data.user.user_metadata?.role) {
             resolvedRole = data.user.user_metadata.role as UserRole;
