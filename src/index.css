@@ -1131,6 +1131,108 @@ span[id^="tooltip_content"] {
   border-bottom: none !important;
 }
 
+.grammar-table-grid .datagrid table tr.table-sub-header td,
+.prose .grammar-table-grid .datagrid table tr.table-sub-header td {
+  background-color: #fff4e6 !important;
+  color: #7c2d12 !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  border-bottom: 1.5px solid #ffedd5 !important;
+  padding: 6px 10px !important;
+}
+
+/* Responsive audio vocabulary chips/grid (.datagrid_audio) */
+.datagrid.datagrid_audio,
+.prose .datagrid.datagrid_audio {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  max-width: 100% !important;
+  margin: 1.25rem auto !important;
+}
+
+.datagrid.datagrid_audio table,
+.prose .datagrid.datagrid_audio table {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.datagrid.datagrid_audio table tbody,
+.datagrid.datagrid_audio table tr,
+.prose .datagrid.datagrid_audio table tbody,
+.prose .datagrid.datagrid_audio table tr {
+  display: contents !important;
+}
+
+.datagrid.datagrid_audio table td,
+.prose .datagrid.datagrid_audio table td {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  background: #ffffff !important;
+  border: 1.5px solid #ffc78e !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04) !important;
+  padding: 10px 12px !important;
+  font-weight: 600 !important;
+  color: #4a3b47 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+}
+
+.datagrid.datagrid_audio table td:hover,
+.prose .datagrid.datagrid_audio table td:hover {
+  background: #fff7ed !important;
+  border-color: #fb923c !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(251, 146, 60, 0.15) !important;
+}
+
+.datagrid.datagrid_audio table td a,
+.prose .datagrid.datagrid_audio table td a {
+  color: inherit !important;
+  text-decoration: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  text-align: center !important;
+}
+
+@media (max-width: 768px) {
+  .datagrid.datagrid_audio table,
+  .prose .datagrid.datagrid_audio table {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.625rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .datagrid.datagrid_audio table,
+  .prose .datagrid.datagrid_audio table {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+  .datagrid.datagrid_audio table td,
+  .prose .datagrid.datagrid_audio table td {
+    padding: 8px 6px !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+  }
+}
+
 /* Also style any standard tables (vocabulary, grammar, conjugations) with the warm theme */
 .prose table.simple_table,
 .prose table:not(.center_img_table):not(.cloze-grid table):not(.datagrid table) {
