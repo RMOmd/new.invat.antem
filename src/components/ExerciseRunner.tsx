@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, ActivityProgress, AIEvaluationResult } from '../types/course';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { AudioPlayer } from './AudioPlayer';
 import { DialogueReorder } from './DialogueReorder';
 import { QuizRunner } from './QuizRunner';
@@ -32,6 +33,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   hasNext
 }) => {
   const { t } = useLanguage();
+  const { currentUser } = useAuth();
+  const isTeacherOrAdmin = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   const gaps = activity.gaps || [];
   const orderItems = activity.orderItems || [];
   const quizQuestions = activity.quizQuestions || [];
@@ -666,16 +669,18 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
                 {t('assign_chars_count', { count: submissionText.length })}
               </span>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleAiCheck}
-                  disabled={isAiEvaluating || !submissionText.trim()}
-                  className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-                  title="Verifică textul cu profesorul AI"
-                >
-                  <Sparkles className={`w-4 h-4 ${isAiEvaluating ? 'animate-spin' : ''}`} />
-                  {isAiEvaluating ? t('ai_checking') : t('ai_btn_check')}
-                </button>
+                {isTeacherOrAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleAiCheck}
+                    disabled={isAiEvaluating || !submissionText.trim()}
+                    className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                    title="Verifică textul cu profesorul AI (Profesor / Administrator)"
+                  >
+                    <Sparkles className={`w-4 h-4 ${isAiEvaluating ? 'animate-spin' : ''}`} />
+                    {isAiEvaluating ? t('ai_checking') : t('ai_btn_check')}
+                  </button>
+                )}
                 <button
                   type="submit"
                   className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
@@ -687,7 +692,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             </div>
           </form>
 
-          {showKeyPrompt && (
+          {isTeacherOrAdmin && showKeyPrompt && (
             <div className="mt-4 p-4 bg-purple-50/90 border-2 border-purple-300 rounded-2xl shadow-sm space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs sm:text-sm font-bold text-purple-950 flex items-center gap-1.5">
@@ -751,7 +756,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             </div>
           )}
 
-          {aiEvaluation && (
+          {isTeacherOrAdmin && aiEvaluation && (
             <div className="mt-4 p-4 sm:p-5 bg-white border-2 border-purple-200 rounded-2xl shadow-sm space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-purple-100">
                 <div className="flex items-center gap-2">
