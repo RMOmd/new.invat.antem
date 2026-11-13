@@ -80,7 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const saved = localStorage.getItem(LOCAL_CURRENT_USER_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const u = JSON.parse(saved);
+        if (u && (u.email?.toLowerCase() === 'admin@antem.org' || u.email?.toLowerCase() === 'rmo84791@gmail.com')) {
+          u.role = 'admin';
+        }
+        return u;
       } catch (e) {}
     }
     // GATED ACCESS: No automatic login on first visit!
@@ -271,16 +275,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   const loginAs = (user: UserProfile) => {
-    setCurrentUser(user);
-    localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(user));
+    const isAdminEmail = user.email.toLowerCase() === 'admin@antem.org' || user.email.toLowerCase() === 'rmo84791@gmail.com';
+    const resolvedUser: UserProfile = isAdminEmail ? { ...user, role: 'admin' } : user;
+    setCurrentUser(resolvedUser);
+    localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(resolvedUser));
 
     const supabase = getSupabase();
     if (supabase) {
       supabase.from('profiles').upsert({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
+        id: resolvedUser.id,
+        email: resolvedUser.email,
+        name: resolvedUser.name,
+        role: resolvedUser.role
       }).then(({ error }) => {
         if (error) console.warn('Profile sync notice:', error.message);
       });
@@ -378,8 +384,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
     const cleanPass = pass.trim();
-    // Rule: Nobody can register as teacher or admin! Everyone registers as student!
-    const role: UserRole = 'student';
+    // Recognize admin emails or default to student
+    const isAdminEmail = cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com';
+    const role: UserRole = isAdminEmail ? 'admin' : 'student';
 
     if (!cleanName) return { success: false, error: 'Introduceți numele și prenumele.' };
     if (!cleanEmail || !cleanEmail.includes('@')) return { success: false, error: 'Introduceți o adresă de e-mail validă.' };
@@ -395,7 +402,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: cleanEmail,
           password: cleanPass,
           options: {
-            data: { name: cleanName, role: 'student' }
+            data: { name: cleanName, role: role }
           }
         });
         if (error) {
@@ -407,7 +414,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: userId,
             email: cleanEmail,
             name: cleanName,
-            role: 'student'
+            role: role
           });
           if (profileErr) {
             console.warn('Supabase profiles upsert warning:', profileErr.message);
@@ -430,7 +437,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: userId,
       name: cleanName,
       email: cleanEmail,
-      role: 'student',
+      role: role,
       password: cleanPass,
       createdAt: new Date().toISOString()
     };
