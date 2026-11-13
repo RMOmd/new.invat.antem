@@ -2,6 +2,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_CONFIG_KEY = 'romanian_supabase_config';
 
+export const DEFAULT_SUPABASE_URL = 'https://mfkbyvlpsqefaifjtuaf.supabase.co';
+export const DEFAULT_SUPABASE_KEY = 'sb_publishable_o650KaSdQdFRipbrDm5u7g_vn-8VTbB';
+
 export interface SupabaseConfig {
   url: string;
   anonKey: string;
@@ -20,8 +23,8 @@ export function getSavedSupabaseConfig(): SupabaseConfig {
     }
   }
   return {
-    url: (import.meta as any).env?.VITE_SUPABASE_URL || '',
-    anonKey: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || ''
+    url: (import.meta as any).env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL,
+    anonKey: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_KEY
   };
 }
 
