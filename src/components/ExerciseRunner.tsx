@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, ActivityProgress } from '../types/course';
+import { Activity, ActivityProgress, AIEvaluationResult } from '../types/course';
 import { useLanguage } from '../context/LanguageContext';
 import { AudioPlayer } from './AudioPlayer';
 import { DialogueReorder } from './DialogueReorder';
 import { QuizRunner } from './QuizRunner';
 import { MatchingRunner } from './MatchingRunner';
 import { AudioPlaylistRunner } from './AudioPlaylistRunner';
-import { CheckCircle2, RotateCcw, Lightbulb, Send, Award, ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { evaluateEssayWithGemini } from '../lib/gemini';
+import { CheckCircle2, RotateCcw, Lightbulb, Send, Award, ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles, Copy, Check, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface ExerciseRunnerProps {
   activity: Activity;
   savedProgress?: ActivityProgress;
   onSaveProgress: (progress: ActivityProgress) => void;
-  onSubmitAssignment: (activityId: string, activityTitle: string, text: string) => void;
+  onSubmitAssignment: (activityId: string, activityTitle: string, text: string, aiEvaluation?: AIEvaluationResult) => void;
   onPrev?: () => void;
   onNext?: () => void;
   hasPrev?: boolean;
@@ -63,6 +64,12 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     return !!savedProgress?.completed && isAssignmentType;
   });
 
+  // AI Evaluation state
+  const [isAiEvaluating, setIsAiEvaluating] = useState(false);
+  const [aiEvaluation, setAiEvaluation] = useState<AIEvaluationResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [copiedImproved, setCopiedImproved] = useState(false);
+
   // Dialogue ordering state
   const [orderCorrectCount, setOrderCorrectCount] = useState(0);
   const [orderIsAllCorrect, setOrderIsAllCorrect] = useState(false);
@@ -81,6 +88,10 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     setActiveGapIndex(null);
     setSubmissionText(savedProgress?.userAnswers?.[0] || '');
     setSubmittedSuccess(!!savedProgress?.completed && isAssignmentType);
+    setIsAiEvaluating(false);
+    setAiEvaluation(null);
+    setAiError(null);
+    setCopiedImproved(false);
     setOrderHintTrigger(0);
     setMatchingHintTrigger(0);
     // Always scroll page and any scrollable container to top when switching exercises
@@ -349,18 +360,42 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     }
   };
 
+  const handleAiCheck = async () => {
+    if (!submissionText.trim()) {
+      const textarea = document.getElementById('assignment-textarea');
+      textarea?.focus();
+      return;
+    }
+    setIsAiEvaluating(true);
+    setAiError(null);
+    try {
+      const result = await evaluateEssayWithGemini(
+        activity.title,
+        submissionText,
+        activity.instructions
+      );
+      setAiEvaluation(result);
+    } catch (err: any) {
+      console.error('AI check error:', err);
+      setAiError(err.message || 'Eroare la verificarea textului cu AI.');
+    } finally {
+      setIsAiEvaluating(false);
+    }
+  };
+
   const handleSubmitWork = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!submissionText.trim()) return;
-    onSubmitAssignment(activity.id, activity.title, submissionText);
+    onSubmitAssignment(activity.id, activity.title, submissionText, aiEvaluation || undefined);
     setSubmittedSuccess(true);
     setChecked(true);
     setIsSubmitting(false);
 
+    const score = aiEvaluation ? Math.round(aiEvaluation.grade * 10) : 100;
     const prog: ActivityProgress = {
       activityId: activity.id,
       completed: true,
-      score: 100,
+      score,
       correctCount: 1,
       totalGaps: 1,
       userAnswers: { 0: submissionText },
@@ -617,19 +652,151 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
               className="w-full text-base p-3.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3 shadow-inner"
               required
             />
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span className="text-xs text-amber-800 font-medium">
                 {t('assign_chars_count', { count: submissionText.length })}
               </span>
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <Send className="w-4 h-4" />
-                {t('assign_btn_submit')}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAiCheck}
+                  disabled={isAiEvaluating || !submissionText.trim()}
+                  className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                  title="Verifică textul cu profesorul AI"
+                >
+                  <Sparkles className={`w-4 h-4 ${isAiEvaluating ? 'animate-spin' : ''}`} />
+                  {isAiEvaluating ? t('ai_checking') : t('ai_btn_check')}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  {t('assign_btn_submit')}
+                </button>
+              </div>
             </div>
           </form>
+
+          {aiError && (
+            <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span>{aiError}</span>
+            </div>
+          )}
+
+          {aiEvaluation && (
+            <div className="mt-4 p-4 sm:p-5 bg-white border-2 border-purple-200 rounded-2xl shadow-sm space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-purple-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">
+                      Evaluare Pedagogică AI (Nivel A1-A2)
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      Standardul ANTEM • Feedback personalizat
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`px-3 py-1.5 rounded-xl border font-bold text-sm flex items-center gap-1.5 ${
+                  aiEvaluation.grade >= 8.5
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : aiEvaluation.grade >= 6.5
+                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                    : 'bg-rose-50 text-rose-800 border-rose-300'
+                }`}>
+                  <Award className="w-4 h-4" />
+                  <span>{t('ai_score_badge')}: {aiEvaluation.grade}/10</span>
+                </div>
+              </div>
+
+              <div className="bg-purple-50/70 p-3.5 rounded-xl border border-purple-200 text-sm text-purple-950 leading-relaxed">
+                {aiEvaluation.summary}
+              </div>
+
+              {aiEvaluation.strengths && aiEvaluation.strengths.length > 0 && (
+                <div>
+                  <h5 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    {t('ai_strengths')}
+                  </h5>
+                  <ul className="space-y-1.5">
+                    {aiEvaluation.strengths.map((str, idx) => (
+                      <li key={idx} className="text-xs text-slate-700 flex items-start gap-2 bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+                        <span className="text-emerald-600 font-bold">✓</span>
+                        <span>{str}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiEvaluation.corrections && aiEvaluation.corrections.length > 0 && (
+                <div>
+                  <h5 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                    {t('ai_corrections')} ({aiEvaluation.corrections.length})
+                  </h5>
+                  <div className="space-y-2">
+                    {aiEvaluation.corrections.map((corr, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="line-through text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded">
+                            {corr.original}
+                          </span>
+                          <span className="text-slate-400">➔</span>
+                          <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                            {corr.corrected}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 pt-0.5">{corr.explanation}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiEvaluation.improvedText && (
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      {t('ai_improved')}
+                    </h5>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubmissionText(aiEvaluation.improvedText);
+                        navigator.clipboard?.writeText(aiEvaluation.improvedText);
+                        setCopiedImproved(true);
+                        setTimeout(() => setCopiedImproved(false), 2000);
+                      }}
+                      className="text-xs text-purple-700 hover:text-purple-900 font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedImproved ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedImproved ? t('ai_copied') : t('ai_use_improved')}
+                    </button>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-800 italic bg-white p-2.5 rounded-lg border border-slate-200">
+                    "{aiEvaluation.improvedText}"
+                  </p>
+                </div>
+              )}
+
+              {aiEvaluation.recommendation && (
+                <div className="text-xs text-indigo-900 bg-indigo-50/70 p-3 rounded-xl border border-indigo-100 flex items-start gap-2">
+                  <Lightbulb className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block">{t('ai_recommendation')}:</span>
+                    <span>{aiEvaluation.recommendation}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

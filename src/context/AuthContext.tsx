@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabase } from '../lib/supabase';
-import { ActivityProgress, AssignmentSubmission } from '../types/course';
+import { ActivityProgress, AssignmentSubmission, AIEvaluationResult } from '../types/course';
 
 export type UserRole = 'student' | 'teacher' | 'admin' | 'demo';
 
@@ -28,7 +28,7 @@ interface AuthContextType {
   syncLocalUsersToSupabase: () => Promise<{ count: number; error?: string }>;
   logout: () => void;
   saveProgress: (progress: ActivityProgress) => Promise<void>;
-  submitAssignment: (activityId: string, activityTitle: string, text: string) => Promise<void>;
+  submitAssignment: (activityId: string, activityTitle: string, text: string, aiEvaluation?: AIEvaluationResult) => Promise<void>;
   reviewSubmission: (submissionId: string, grade: number, feedback: string) => Promise<void>;
 }
 
@@ -551,7 +551,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const submitAssignment = async (activityId: string, activityTitle: string, text: string) => {
+  const submitAssignment = async (activityId: string, activityTitle: string, text: string, aiEvaluation?: AIEvaluationResult) => {
     if (!currentUser) return;
     const submission: AssignmentSubmission = {
       id: `sub-${Date.now()}`,
@@ -561,7 +561,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activityId,
       activityTitle,
       submissionText: text,
-      status: 'pending',
+      status: aiEvaluation ? 'reviewed' : 'pending',
+      grade: aiEvaluation ? aiEvaluation.grade : undefined,
+      teacherFeedback: aiEvaluation ? aiEvaluation.summary : undefined,
+      aiEvaluation,
       createdAt: new Date().toISOString()
     };
 
@@ -583,6 +586,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           activity_title: submission.activityTitle,
           submission_text: submission.submissionText,
           status: submission.status,
+          grade: submission.grade,
+          teacher_feedback: submission.teacherFeedback,
           created_at: submission.createdAt
         });
       } catch (e) {

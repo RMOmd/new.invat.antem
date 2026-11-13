@@ -69,6 +69,21 @@ export interface ActivityProgress {
   lastAttemptAt: string;
 }
 
+export interface AICorrection {
+  original: string;
+  corrected: string;
+  explanation: string;
+}
+
+export interface AIEvaluationResult {
+  grade: number;
+  summary: string;
+  strengths: string[];
+  corrections: AICorrection[];
+  improvedText: string;
+  recommendation: string;
+}
+
 export interface AssignmentSubmission {
   id: string;
   userId: string;
@@ -80,6 +95,7 @@ export interface AssignmentSubmission {
   status: 'pending' | 'reviewed';
   teacherFeedback?: string;
   grade?: number;
+  aiEvaluation?: AIEvaluationResult;
   createdAt: string;
 }
 
