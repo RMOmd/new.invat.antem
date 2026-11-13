@@ -14,6 +14,150 @@
   }
 }
 
+/* ========================================================
+   Plural Noun Genders & Article Pairs Modern Responsive Grids
+   (e.g. 2. B. Gramatică / Pag 3)
+======================================================== */
+.gender-plural-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+  max-width: 900px !important;
+  margin: 1.25rem auto !important;
+  width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .gender-plural-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1rem !important;
+  }
+}
+
+.gender-card {
+  background: #ffffff !important;
+  border: 1.5px solid #ffc78e !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.gender-header {
+  background-color: #ffc78e !important;
+  color: #4a3b47 !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  padding: 8px 12px !important;
+  font-size: 0.95rem !important;
+  text-transform: capitalize !important;
+}
+
+.gender-body {
+  padding: 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  background-color: #fffdfa !important;
+  flex: 1 !important;
+}
+
+.gender-sub-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-size: 0.9rem !important;
+  padding: 4px 0 !important;
+  border-bottom: 1px dashed #ffe8cc !important;
+}
+
+.gender-sub-item:last-child {
+  border-bottom: none !important;
+}
+
+.gender-ending {
+  font-weight: 700 !important;
+  color: #c2410c !important;
+  font-size: 0.95rem !important;
+}
+
+.gender-example {
+  color: #334155 !important;
+  font-style: italic !important;
+  font-weight: 600 !important;
+}
+
+/* Article pairs (un / niște, o / niște) cards */
+.article-pairs-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+  max-width: 900px !important;
+  margin: 1.25rem auto !important;
+  width: 100% !important;
+}
+
+@media (min-width: 768px) {
+  .article-pairs-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+}
+
+.article-pair-card {
+  background: #ffffff !important;
+  border: 1.5px solid #ffc78e !important;
+  border-radius: 14px !important;
+  padding: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+.article-card-col {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  padding: 6px !important;
+  background: #fffbf5 !important;
+  border-radius: 10px !important;
+  border: 1px solid #ffe8cc !important;
+}
+
+.article-badge {
+  background: #ffc78e !important;
+  color: #4a3b47 !important;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  padding: 2px 10px !important;
+  border-radius: 9999px !important;
+  margin-bottom: 6px !important;
+}
+
+.article-img-wrap {
+  width: 100% !important;
+  height: 90px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 6px !important;
+}
+
+.article-img {
+  max-height: 100% !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+}
+
+.article-label {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+}
+
 /* Original ANTEM course warm styling */
 .color_text_bg {
   margin: 1.25rem 0;
