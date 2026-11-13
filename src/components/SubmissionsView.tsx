@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
-import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw } from 'lucide-react';
 
 interface ParsedFeedback {
   summary: string;
@@ -147,20 +147,33 @@ export const FormattedFeedback: React.FC<{ feedback: string }> = ({ feedback }) 
 };
 
 export const SubmissionsView: React.FC = () => {
-  const { currentUser, allSubmissions, reviewSubmission, deleteSubmission } = useAuth();
+  const { currentUser, allSubmissions, reviewSubmission, deleteSubmission, refreshSubmissions } = useAuth();
   const { t } = useLanguage();
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [gradeInput, setGradeInput] = useState<number>(10);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
 
-  // If student, filter by their own submissions; if teacher, show all
+  // If student, filter by their own submissions (by userId or userEmail); if teacher/admin, show all
+  const currentEmail = currentUser?.email?.toLowerCase();
   const visibleSubmissions = isTeacher
     ? allSubmissions
-    : allSubmissions.filter(s => s.userId === currentUser?.id);
+    : allSubmissions.filter(
+        s => s.userId === currentUser?.id || (currentEmail && s.userEmail.toLowerCase() === currentEmail)
+      );
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshSubmissions();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleReview = (subId: string) => {
     reviewSubmission(subId, Number(gradeInput), feedbackInput);
@@ -171,23 +184,36 @@ export const SubmissionsView: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 pb-28">
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-xs">
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-            {isTeacher ? t('subs_teacher_title') : t('subs_student_title')}
-          </h1>
-          <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-            currentUser?.role === 'admin'
-              ? 'bg-rose-100 text-rose-800'
-              : isTeacher
-              ? 'bg-purple-100 text-purple-800'
-              : 'bg-blue-100 text-blue-800'
-          }`}>
-            {currentUser?.role === 'admin' ? t('role_admin') : isTeacher ? t('role_teacher') : t('role_student')}
-          </span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+              {isTeacher ? t('subs_teacher_title') : t('subs_student_title')}
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {isTeacher ? t('subs_teacher_desc') : t('subs_student_desc')}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-60"
+              title="Sincronizează cu baza de date"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+              <span>{isRefreshing ? 'Sincronizare...' : 'Reîmprospătează'}</span>
+            </button>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+              currentUser?.role === 'admin'
+                ? 'bg-rose-100 text-rose-800'
+                : isTeacher
+                ? 'bg-purple-100 text-purple-800'
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {currentUser?.role === 'admin' ? t('role_admin') : isTeacher ? t('role_teacher') : t('role_student')}
+            </span>
+          </div>
         </div>
-        <p className="text-sm text-slate-500">
-          {isTeacher ? t('subs_teacher_desc') : t('subs_student_desc')}
-        </p>
       </div>
 
       {visibleSubmissions.length === 0 ? (

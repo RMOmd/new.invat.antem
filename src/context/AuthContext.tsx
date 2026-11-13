@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { ActivityProgress, AssignmentSubmission, AIEvaluationResult } from '../types/course';
 
@@ -25,6 +25,7 @@ interface AuthContextType {
   changeUserRole: (userId: string, newRole: UserRole) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   refreshUsersList: () => Promise<void>;
+  refreshSubmissions: () => Promise<void>;
   syncLocalUsersToSupabase: () => Promise<{ count: number; error?: string }>;
   logout: () => void;
   saveProgress: (progress: ActivityProgress) => Promise<void>;
@@ -274,6 +275,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshUsersList();
     }
   }, [currentUser]);
+
+  // Fetch remote submissions from Supabase and cache locally
+  const fetchRemoteSubmissions = useCallback(async () => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Failed to fetch remote submissions from Supabase:', error.message);
+        return;
+      }
+
+      if (data) {
+        const mapped: AssignmentSubmission[] = data.map((row: any) => ({
+          id: row.id,
+          userId: row.user_id,
+          userEmail: row.user_email,
+          userName: row.user_name,
+          activityId: row.activity_id,
+          activityTitle: row.activity_title,
+          submissionText: row.submission_text,
+          status: (row.status as 'pending' | 'reviewed') || 'pending',
+          grade: row.grade !== null && row.grade !== undefined ? Number(row.grade) : undefined,
+          teacherFeedback: row.teacher_feedback || undefined,
+          createdAt: row.created_at
+        }));
+
+        setAllSubmissions(mapped);
+        localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(mapped));
+      }
+    } catch (e) {
+      console.error('Error fetching submissions from Supabase:', e);
+    }
+  }, []);
+
+  // Listen to remote submissions and subscribe to Supabase Realtime changes
+  useEffect(() => {
+    fetchRemoteSubmissions();
+
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel('submissions_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'submissions' },
+        () => {
+          fetchRemoteSubmissions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchRemoteSubmissions, currentUser]);
 
   const loginAs = (user: UserProfile) => {
     const isAdminEmail = user.email.toLowerCase() === 'admin@antem.org' || user.email.toLowerCase() === 'rmo84791@gmail.com';
@@ -587,10 +649,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           activity_title: submission.activityTitle,
           submission_text: submission.submissionText,
           status: submission.status,
-          grade: submission.grade,
-          teacher_feedback: submission.teacherFeedback,
+          grade: submission.grade ?? null,
+          teacher_feedback: submission.teacherFeedback ?? null,
           created_at: submission.createdAt
         });
+        await fetchRemoteSubmissions();
       } catch (e) {
         console.error('Supabase submit error', e);
       }
@@ -625,6 +688,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             teacher_feedback: feedback
           })
           .eq('id', submissionId);
+        await fetchRemoteSubmissions();
       } catch (e) {
         console.error('Supabase review error', e);
       }
@@ -645,6 +709,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('submissions')
           .delete()
           .eq('id', submissionId);
+        await fetchRemoteSubmissions();
       } catch (e) {
         console.error('Supabase delete submission error', e);
       }
@@ -665,6 +730,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         changeUserRole,
         deleteUser,
         refreshUsersList,
+        refreshSubmissions: fetchRemoteSubmissions,
         syncLocalUsersToSupabase,
         logout,
         saveProgress,
