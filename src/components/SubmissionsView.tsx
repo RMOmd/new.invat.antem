@@ -2,7 +2,149 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
-import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye } from 'lucide-react';
+
+interface ParsedFeedback {
+  summary: string;
+  corrections: { original: string; corrected: string; explanation: string }[];
+  improvedText: string;
+  tip: string;
+}
+
+function parseFeedback(text: string): ParsedFeedback {
+  let summary = '';
+  const corrections: { original: string; corrected: string; explanation: string }[] = [];
+  let improvedText = '';
+  let tip = '';
+
+  const corrIdx = text.indexOf('Corecturi:');
+  const varIdx = text.indexOf('Varianta recomandată:');
+  const sfatIdx = text.indexOf('Sfat:');
+
+  if (corrIdx !== -1) {
+    summary = text.substring(0, corrIdx).trim();
+    const corrEnd = varIdx !== -1 ? varIdx : (sfatIdx !== -1 ? sfatIdx : text.length);
+    const corrBlock = text.substring(corrIdx + 'Corecturi:'.length, corrEnd).trim();
+
+    const lines = corrBlock.split('\n');
+    for (const l of lines) {
+      const line = l.trim().replace(/^[•\-*]\s*/, '');
+      if (!line) continue;
+      const parts = line.split('➔');
+      if (parts.length >= 2) {
+        const original = parts[0].trim();
+        const rest = parts.slice(1).join('➔').trim();
+        let corrected = rest;
+        let explanation = '';
+        const firstParen = rest.indexOf(' (');
+        if (firstParen !== -1 && rest.endsWith(')')) {
+          explanation = rest.substring(firstParen + 2, rest.length - 1).trim();
+          corrected = rest.substring(0, firstParen).trim();
+        }
+        corrections.push({ original, corrected, explanation });
+      } else {
+        corrections.push({ original: '', corrected: line, explanation: '' });
+      }
+    }
+  } else if (varIdx !== -1) {
+    summary = text.substring(0, varIdx).trim();
+  } else if (sfatIdx !== -1) {
+    summary = text.substring(0, sfatIdx).trim();
+  } else {
+    summary = text.trim();
+  }
+
+  if (varIdx !== -1) {
+    const varEnd = sfatIdx !== -1 ? sfatIdx : text.length;
+    improvedText = text.substring(varIdx + 'Varianta recomandată:'.length, varEnd).trim().replace(/^["']|["']$/g, '');
+  }
+
+  if (sfatIdx !== -1) {
+    tip = text.substring(sfatIdx + 'Sfat:'.length).trim();
+  }
+
+  return { summary, corrections, improvedText, tip };
+}
+
+export const FormattedFeedback: React.FC<{ feedback: string }> = ({ feedback }) => {
+  const parsed = parseFeedback(feedback);
+  const isStructured = parsed.corrections.length > 0 || !!parsed.improvedText || !!parsed.tip;
+
+  if (!isStructured) {
+    return <div className="whitespace-pre-wrap leading-relaxed">{feedback}</div>;
+  }
+
+  return (
+    <div className="space-y-3 pt-1">
+      {/* 1. Summary / Encouragement */}
+      {parsed.summary && (
+        <div className="bg-white/90 p-3.5 rounded-xl border border-emerald-200 text-sm text-emerald-950 leading-relaxed font-medium shadow-2xs">
+          {parsed.summary}
+        </div>
+      )}
+
+      {/* 2. Corrections */}
+      {parsed.corrections.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+            Corecturi și explicații ({parsed.corrections.length})
+          </div>
+          <div className="grid grid-cols-1 gap-2">
+            {parsed.corrections.map((c, i) => (
+              <div key={i} className="p-3 rounded-xl bg-white border border-amber-200 text-xs space-y-1.5 shadow-2xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  {c.original && (
+                    <>
+                      <span className="line-through text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+                        {c.original}
+                      </span>
+                      <span className="text-slate-400 font-bold">➔</span>
+                    </>
+                  )}
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    {c.corrected}
+                  </span>
+                </div>
+                {c.explanation && (
+                  <p className="text-slate-600 pl-1 leading-relaxed">
+                    {c.explanation}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Improved text */}
+      {parsed.improvedText && (
+        <div className="bg-indigo-50/70 p-3.5 rounded-xl border-l-4 border-indigo-500 border-y border-r border-indigo-200 space-y-2 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+              Varianta recomandată
+            </span>
+          </div>
+          <div className="text-xs sm:text-sm text-slate-800 bg-white/95 p-3 rounded-lg border border-indigo-100 whitespace-pre-wrap leading-relaxed font-sans">
+            {parsed.improvedText}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Tip */}
+      {parsed.tip && (
+        <div className="text-xs sm:text-sm text-amber-950 bg-amber-50/90 p-3.5 rounded-xl border border-amber-200 flex items-start gap-2.5 shadow-2xs">
+          <Lightbulb className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold block text-xs uppercase tracking-wider text-amber-800 mb-0.5">Sfat pedagogic:</span>
+            <span>{parsed.tip}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const SubmissionsView: React.FC = () => {
   const { currentUser, allSubmissions, reviewSubmission } = useAuth();
@@ -137,11 +279,11 @@ export const SubmissionsView: React.FC = () => {
 
                 {/* Teacher feedback if reviewed */}
                 {isReviewed && sub.teacherFeedback && (
-                  <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 text-sm text-emerald-900 mb-2">
-                    <span className="text-xs font-bold text-emerald-700 flex items-center gap-1 mb-1">
-                      <Award className="w-3.5 h-3.5" /> {t('subs_feedback_label')}
+                  <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 text-sm text-emerald-950 mb-3 space-y-2">
+                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-emerald-600" /> {t('subs_feedback_label')}
                     </span>
-                    <div className="whitespace-pre-wrap">{sub.teacherFeedback}</div>
+                    <FormattedFeedback feedback={sub.teacherFeedback} />
                   </div>
                 )}
 
@@ -206,13 +348,25 @@ export const SubmissionsView: React.FC = () => {
                         <div>
                           <label className="text-xs font-bold text-purple-900 block mb-1">{t('subs_feedback_label')}</label>
                           <textarea
-                            rows={4}
+                            rows={5}
                             value={feedbackInput}
                             onChange={e => setFeedbackInput(e.target.value)}
                             placeholder={t('subs_feedback_ph')}
-                            className="w-full text-sm p-2.5 bg-white border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                            className="w-full text-sm p-2.5 bg-white border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono text-xs"
                           />
                         </div>
+
+                        {feedbackInput.trim() && (
+                          <div className="pt-1">
+                            <span className="text-[11px] font-bold text-purple-800 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+                              <Eye className="w-3.5 h-3.5 text-purple-600" />
+                              Previzualizare pentru student:
+                            </span>
+                            <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200">
+                              <FormattedFeedback feedback={feedbackInput} />
+                            </div>
+                          </div>
+                        )}
                         <div className="flex gap-2">
                           <button
                             type="button"
