@@ -580,8 +580,17 @@ span[id^="tooltip_content"] {
   .prose .datagrid table th {
     padding: 8px 10px !important;
     font-size: 0.85rem !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
     line-height: 1.4 !important;
+  }
+
+  /* Specific fix for datagrids with images (e.g. 2. B. Pag 3, 2. B. Pag 5) on mobile */
+  .datagrid table td img,
+  .prose .datagrid table td img {
+    max-width: 100px !important;
+    max-height: 90px !important;
+    object-fit: contain !important;
+    margin: 0 auto 4px auto !important;
   }
 
   /* Ensure tables don't force nowrap horizontally on mobile */
