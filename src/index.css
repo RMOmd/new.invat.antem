@@ -5,6 +5,12 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 }
 
@@ -273,7 +279,9 @@ span[id^="tooltip_content"] {
    Matching original course styling (#FFC78E)
 ======================================================== */
 .prose {
-  overflow-x: hidden;
+  max-width: 100% !important;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   word-break: break-word;
 }
 
@@ -574,11 +582,47 @@ span[id^="tooltip_content"] {
     line-height: 1.4 !important;
   }
 
+  /* Ensure tables don't force nowrap horizontally on mobile */
   .prose table.simple_table td,
   .prose table.simple_table th {
     padding: 8px 10px !important;
     font-size: 0.85rem !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  /* Split layout for exercises with side-by-side images (e.g. Act 2188) */
+  .prose table.responsive-split,
+  .prose table.responsive-split tbody,
+  .prose table.responsive-split tr {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .prose table.responsive-split td {
+    display: block !important;
+    width: 100% !important;
+    border-left: none !important;
+    border-bottom: 1px solid #ffe8cc !important;
+    padding: 0.75rem 0.5rem !important;
+    white-space: normal !important;
+  }
+
+  /* Match tables (e.g. Act 2189): ensure images scale and dropdowns wrap nicely */
+  .prose table.responsive-match-table {
+    display: table !important;
+    width: 100% !important;
+  }
+
+  .prose table.responsive-match-table td {
+    padding: 6px 8px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .prose table.responsive-match-table img {
+    max-width: 90px !important;
+    height: auto !important;
   }
 
   /* Specifically for pure image tables like center_img_table: allow wrapping */
@@ -608,3 +652,13 @@ span[id^="tooltip_content"] {
     padding: 0.25rem;
   }
 }
+
+/* Universal guarantee: No image can ever exceed viewport or container width */
+img,
+.prose img,
+.prose table img {
+  max-width: 100% !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+}
+
