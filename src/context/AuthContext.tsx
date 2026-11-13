@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { ActivityProgress, AssignmentSubmission } from '../types/course';
 
-export type UserRole = 'student' | 'teacher' | 'admin';
+export type UserRole = 'student' | 'teacher' | 'admin' | 'demo';
 
 export interface UserProfile {
   id: string;
@@ -38,11 +38,18 @@ const LOCAL_USERS_KEY = 'romanian_platform_users';
 const LOCAL_CURRENT_USER_KEY = 'romanian_platform_current_user';
 const LOCAL_SUBMISSIONS_KEY = 'romanian_platform_submissions';
 
+export const DEMO_USER: UserProfile = {
+  id: 'usr-demo',
+  name: 'Cont Demo',
+  email: 'demo@antem.org',
+  role: 'demo',
+  password: 'demo123',
+  createdAt: '2026-01-01'
+};
+
 export const INITIAL_DEMO_USERS: UserProfile[] = [
   { id: 'usr-admin', name: 'Administrator', email: 'admin@antem.org', role: 'admin', password: 'admin123', createdAt: '2026-01-01' },
-  { id: 'usr-teacher', name: 'Profesor ANTEM', email: 'teacher@antem.org', role: 'teacher', password: 'password123', createdAt: '2026-01-01' },
-  { id: 'usr-student-1', name: 'Danila Student', email: 'danila@example.com', role: 'student', password: 'password123', createdAt: '2026-01-01' },
-  { id: 'usr-student-2', name: 'Elena Cojocaru', email: 'elena@example.com', role: 'student', password: 'password123', createdAt: '2026-01-01' }
+  DEMO_USER
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -56,6 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Ensure admin account always exists
           if (!list.some(u => u.email.toLowerCase() === 'admin@antem.org' || u.role === 'admin')) {
             list.unshift(INITIAL_DEMO_USERS[0]);
+          }
+          // Ensure demo account always exists
+          if (!list.some(u => u.email.toLowerCase() === 'demo@antem.org' || u.role === 'demo')) {
+            list.push(DEMO_USER);
           }
           return list;
         }
@@ -279,6 +290,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = pass.trim();
+
+    // Fast built-in credentials for demo or admin
+    if (cleanEmail === 'demo@antem.org' && cleanPass === 'demo123') {
+      loginAs(DEMO_USER);
+      return { success: true };
+    }
+    if (cleanEmail === 'admin@antem.org' && cleanPass === 'admin123') {
+      loginAs(INITIAL_DEMO_USERS[0]);
+      return { success: true };
+    }
 
     // 1. Check Supabase Auth if connected
     const supabase = getSupabase();

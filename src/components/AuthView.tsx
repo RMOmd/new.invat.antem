@@ -266,57 +266,41 @@ export const AuthView: React.FC = () => {
                 )}
               </button>
 
-              {/* Fast Demo Access */}
+              {/* Single Demo Access with Restricted Permissions */}
               <div className="pt-4 border-t border-slate-100">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    {t('auth_quick_demo_title')}
-                  </span>
-                </div>
+                <div className="p-3.5 bg-gradient-to-br from-amber-50 to-orange-50/50 border border-amber-200/90 rounded-2xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{t('auth_quick_demo_title')}</span>
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 uppercase tracking-wider">
+                      {t('auth_demo_limited_badge')}
+                    </span>
+                  </div>
 
-                <div className="space-y-1.5">
-                  {usersList.slice(0, 3).map(u => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => handleQuickDemoLogin(u)}
-                      className="w-full p-2.5 bg-slate-50 hover:bg-blue-50/70 border border-slate-200/80 hover:border-blue-300 rounded-xl flex items-center justify-between text-left transition-all group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-2xs ${
-                          u.role === 'admin'
-                            ? 'bg-rose-600'
-                            : u.role === 'teacher'
-                            ? 'bg-purple-600'
-                            : 'bg-blue-600'
-                        }`}>
-                          {u.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                            {u.name}
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono">
-                            {u.email}
-                          </div>
-                        </div>
-                      </div>
+                  <p className="text-[11px] text-amber-800/90 mb-2.5 leading-relaxed">
+                    {t('auth_demo_guest_desc')}
+                  </p>
 
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                          u.role === 'admin'
-                            ? 'bg-rose-100 text-rose-700'
-                            : u.role === 'teacher'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {u.role === 'admin' ? t('role_admin') : u.role === 'teacher' ? t('role_teacher') : t('role_student')}
-                        </span>
-                        <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-                      </div>
-                    </button>
-                  ))}
+                  <div className="flex items-center justify-between bg-white/90 px-3 py-1.5 rounded-xl border border-amber-200 text-xs font-mono text-slate-700 mb-2.5">
+                    <span>demo@antem.org</span>
+                    <span className="text-slate-300">•</span>
+                    <span>demo123</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('demo@antem.org');
+                      setLoginPassword('demo123');
+                      loginWithCredentials('demo@antem.org', 'demo123');
+                    }}
+                    className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>{t('auth_btn_quick_demo')}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </form>

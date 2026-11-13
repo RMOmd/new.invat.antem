@@ -24,7 +24,8 @@ import {
   AlertCircle,
   Key,
   Link as LinkIcon,
-  UploadCloud
+  UploadCloud,
+  Sparkles
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -147,6 +148,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                   ? 'bg-rose-600'
                   : currentUser?.role === 'teacher'
                   ? 'bg-purple-600'
+                  : currentUser?.role === 'demo'
+                  ? 'bg-amber-600'
                   : 'bg-blue-600'
               }`}>
                 {currentUser?.name.charAt(0).toUpperCase() || 'U'}
@@ -181,12 +184,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                   ? 'bg-rose-100 text-rose-700'
                   : currentUser?.role === 'teacher'
                   ? 'bg-purple-100 text-purple-700'
+                  : currentUser?.role === 'demo'
+                  ? 'bg-amber-100 text-amber-800'
                   : 'bg-blue-100 text-blue-700'
               }`}>
                 {currentUser?.role === 'admin'
                   ? t('role_admin')
                   : currentUser?.role === 'teacher'
                   ? t('role_teacher')
+                  : currentUser?.role === 'demo'
+                  ? t('role_demo')
                   : t('role_student')}
               </span>
             </div>
@@ -221,12 +228,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
                   {currentUser?.role === 'admin' && <Shield className="w-4 h-4 text-rose-600" />}
                   {currentUser?.role === 'teacher' && <Award className="w-4 h-4 text-purple-600" />}
+                  {currentUser?.role === 'demo' && <Sparkles className="w-4 h-4 text-amber-600" />}
                   {currentUser?.role === 'student' && <GraduationCap className="w-4 h-4 text-blue-600" />}
                   <span>
                     {currentUser?.role === 'admin'
                       ? t('role_admin')
                       : currentUser?.role === 'teacher'
                       ? t('role_teacher')
+                      : currentUser?.role === 'demo'
+                      ? t('role_demo')
                       : t('role_student')}
                   </span>
                 </div>

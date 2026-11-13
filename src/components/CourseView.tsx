@@ -2,7 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { CourseData, Section, Activity } from '../types/course';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { ChevronDown, ChevronRight, CheckCircle2, PlayCircle, BookOpen, Search, Sparkles, Headphones, FileEdit, HelpCircle, Puzzle, ArrowRightLeft } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  PlayCircle,
+  BookOpen,
+  Search,
+  Sparkles,
+  Headphones,
+  FileEdit,
+  HelpCircle,
+  Puzzle,
+  ArrowRightLeft,
+  Lock
+} from 'lucide-react';
 
 interface CourseViewProps {
   courseData: CourseData;
@@ -17,8 +31,10 @@ export const CourseView: React.FC<CourseViewProps> = ({
   selectedActivityId,
   focusedActivityId
 }) => {
-  const { allProgress } = useAuth();
+  const { allProgress, currentUser, logout } = useAuth();
   const { t } = useLanguage();
+  const isDemo = currentUser?.role === 'demo';
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('romanian_expanded_sections');
@@ -157,63 +173,93 @@ export const CourseView: React.FC<CourseViewProps> = ({
 
       {/* Sections List */}
       <div className="space-y-4">
-        {filteredSections.map(sec => {
+        {filteredSections.map((sec, secIdx) => {
           const stats = calculateSectionStats(sec);
-          const isExpanded = expandedSections[sec.sectionId] || !!searchQuery.trim();
+          const isLockedForDemo = isDemo && secIdx > 1;
+          const isExpanded = !isLockedForDemo && (expandedSections[sec.sectionId] || !!searchQuery.trim());
 
           return (
             <div
               key={sec.sectionId}
-              className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs transition-all"
+              className={`border rounded-2xl overflow-hidden shadow-2xs transition-all ${
+                isLockedForDemo ? 'bg-slate-50/70 border-slate-200/90' : 'bg-white border-slate-200'
+              }`}
             >
               {/* Section Header Accordion */}
               <button
                 type="button"
-                onClick={() => toggleSection(sec.sectionId)}
-                className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer"
+                onClick={() => {
+                  if (isLockedForDemo) {
+                    setShowDemoModal(true);
+                    return;
+                  }
+                  toggleSection(sec.sectionId);
+                }}
+                className={`w-full text-left p-4 sm:p-5 flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                  isLockedForDemo ? 'hover:bg-amber-50/40' : 'hover:bg-slate-50/80'
+                }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md">
-                      {sec.sectionId === 'test-final' || sec.title.includes('Test Final')
-                        ? 'TEST FINAL'
-                        : sec.title.includes(':')
-                        ? sec.title.split(':')[0].toUpperCase()
-                        : sec.sectionId.replace('-', ' ').toUpperCase()}
-                    </span>
+                    {isLockedForDemo ? (
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Lock className="w-3 h-3 text-amber-700" />
+                        {t('demo_locked_badge')}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md">
+                        {sec.sectionId === 'test-final' || sec.title.includes('Test Final')
+                          ? 'TEST FINAL'
+                          : sec.title.includes(':')
+                          ? sec.title.split(':')[0].toUpperCase()
+                          : sec.sectionId.replace('-', ' ').toUpperCase()}
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500">
-                      {t('course_completed_stat', { completed: stats.completed, total: stats.total })}
+                      {isLockedForDemo ? t('course_units_count', { count: 20 }) : t('course_completed_stat', { completed: stats.completed, total: stats.total })}
                     </span>
                   </div>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                  <h2 className={`text-base sm:text-lg font-bold truncate ${
+                    isLockedForDemo ? 'text-slate-600' : 'text-slate-900'
+                  }`}>
                     {sec.title}
                   </h2>
 
                   {/* Unit Progress Bar */}
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden max-w-xs">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        stats.percent === 100 ? 'bg-emerald-500' : 'bg-blue-600'
-                      }`}
-                      style={{ width: `${stats.percent}%` }}
-                    />
-                  </div>
+                  {!isLockedForDemo && (
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden max-w-xs">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          stats.percent === 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                        }`}
+                        style={{ width: `${stats.percent}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    stats.percent === 100
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : stats.percent > 0
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {stats.percent}%
-                  </span>
-                  {isExpanded ? (
-                    <ChevronDown className="w-5 h-5 text-slate-400" />
+                  {isLockedForDemo ? (
+                    <div className="p-2 bg-amber-100 text-amber-700 rounded-xl">
+                      <Lock className="w-4 h-4" />
+                    </div>
                   ) : (
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                    <>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                        stats.percent === 100
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : stats.percent > 0
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {stats.percent}%
+                      </span>
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                      )}
+                    </>
                   )}
                 </div>
               </button>
@@ -314,6 +360,40 @@ export const CourseView: React.FC<CourseViewProps> = ({
           );
         })}
       </div>
+      {/* DEMO RESTRICTED MODAL */}
+      {showDemoModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center mb-4 text-amber-600">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              {t('demo_locked_alert_title')}
+            </h3>
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+              {t('demo_locked_alert_desc')}
+            </p>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                }}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-blue-500/25 cursor-pointer"
+              >
+                {t('demo_locked_btn_register')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDemoModal(false)}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                {t('btn_close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

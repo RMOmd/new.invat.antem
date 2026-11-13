@@ -78,6 +78,13 @@ const AppContent: React.FC = () => {
   const hasNext = currentIdx >= 0 && currentIdx < flatActivities.length - 1;
 
   const handleSelectActivity = (act: Activity) => {
+    if (currentUser?.role === 'demo') {
+      const secIdx = courseData.sections.findIndex(s => s.activities.some(a => a.id === act.id));
+      if (secIdx > 1) {
+        alert(t('demo_locked_alert_desc'));
+        return;
+      }
+    }
     setSelectedActivity(act);
     setLastActiveActivityId(act.id);
     try {
@@ -100,6 +107,13 @@ const AppContent: React.FC = () => {
   const handleNext = () => {
     if (hasNext) {
       const nextAct = flatActivities[currentIdx + 1];
+      if (currentUser?.role === 'demo') {
+        const secIdx = courseData.sections.findIndex(s => s.activities.some(a => a.id === nextAct.id));
+        if (secIdx > 1) {
+          alert(t('demo_locked_alert_desc'));
+          return;
+        }
+      }
       setSelectedActivity(nextAct);
       setLastActiveActivityId(nextAct.id);
       try {
