@@ -140,9 +140,9 @@ export const AuthView: React.FC = () => {
       </div>
 
       {/* Main Auth Card */}
-      <div className="max-w-md w-full mx-auto bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black/40 border border-white/60 overflow-hidden relative z-10">
+      <div className="max-w-md w-full mx-auto bg-white rounded-3xl shadow-2xl shadow-slate-950/60 border border-white/80 overflow-hidden relative z-10">
         {/* Tab Switcher */}
-        <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5">
+        <div className="flex border-b border-slate-200 bg-slate-100/90 p-1.5">
           <button
             type="button"
             onClick={() => {
@@ -152,7 +152,7 @@ export const AuthView: React.FC = () => {
             className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'login'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Lock className="w-4 h-4" />
@@ -167,7 +167,7 @@ export const AuthView: React.FC = () => {
             className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'register'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <User className="w-4 h-4" />
@@ -175,7 +175,7 @@ export const AuthView: React.FC = () => {
           </button>
         </div>
 
-        <div className="p-5 sm:p-7">
+        <div className="p-5 sm:p-7 bg-white">
           {/* Notification Messages */}
           {errorMessage && (
             <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs flex items-start gap-2.5 animate-fadeIn">
@@ -195,7 +195,7 @@ export const AuthView: React.FC = () => {
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   {t('auth_email_label')}
                 </label>
                 <div className="relative">
@@ -208,7 +208,7 @@ export const AuthView: React.FC = () => {
                     onChange={e => setLoginEmail(e.target.value)}
                     placeholder={t('auth_email_ph')}
                     autoComplete="email"
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
+                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
                     required
                   />
                 </div>
@@ -216,10 +216,10 @@ export const AuthView: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
+                  <label className="block text-xs font-bold text-slate-800">
                     {t('auth_pass_label')}
                   </label>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-slate-500 font-medium">
                     {t('auth_pass_demo_hint')}
                   </span>
                 </div>
@@ -233,7 +233,7 @@ export const AuthView: React.FC = () => {
                     onChange={e => setLoginPassword(e.target.value)}
                     placeholder={t('auth_pass_ph')}
                     autoComplete="current-password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
                     required
                   />
                   <button
@@ -246,8 +246,8 @@ export const AuthView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+              <div className="flex items-center justify-between text-xs text-slate-700 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none font-medium">
                   <input
                     type="checkbox"
                     checked={rememberMe}
@@ -317,7 +317,7 @@ export const AuthView: React.FC = () => {
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
                   {t('auth_name_label')}
                 </label>
                 <div className="relative">
@@ -330,14 +330,14 @@ export const AuthView: React.FC = () => {
                     onChange={e => setRegName(e.target.value)}
                     placeholder={t('auth_name_ph')}
                     autoComplete="name"
-                    className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
+                    className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
                   {t('auth_email_label')}
                 </label>
                 <div className="relative">
@@ -350,7 +350,7 @@ export const AuthView: React.FC = () => {
                     onChange={e => setRegEmail(e.target.value)}
                     placeholder={t('auth_email_ph')}
                     autoComplete="email"
-                    className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
+                    className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
                     required
                   />
                 </div>
@@ -358,7 +358,7 @@ export const AuthView: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
                     {t('auth_pass_label')}
                   </label>
                   <div className="relative">
@@ -368,14 +368,14 @@ export const AuthView: React.FC = () => {
                       onChange={e => setRegPassword(e.target.value)}
                       placeholder={t('auth_pass_min_hint')}
                       autoComplete="new-password"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
                     {t('auth_confirm_pass_label')}
                   </label>
                   <div className="relative">
@@ -385,7 +385,7 @@ export const AuthView: React.FC = () => {
                       onChange={e => setRegConfirmPassword(e.target.value)}
                       placeholder={t('auth_confirm_pass_ph')}
                       autoComplete="new-password"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-900"
                       required
                     />
                   </div>
