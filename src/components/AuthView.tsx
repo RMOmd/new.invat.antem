@@ -109,31 +109,38 @@ export const AuthView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-blue-50/40 to-slate-100 flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
+    <div
+      className="min-h-screen bg-cover bg-center bg-fixed flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 relative"
+      style={{
+        backgroundImage: "linear-gradient(to bottom, rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0.75)), url('media/stefan_cel_mare_bg.jpg')"
+      }}
+    >
       {/* Top Header / Language Switcher & Branding */}
-      <div className="max-w-md w-full mx-auto">
+      <div className="max-w-md w-full mx-auto relative z-10">
         <div className="flex items-center justify-end mb-2">
-          <LanguageSwitcher />
+          <div className="bg-slate-900/60 backdrop-blur-md p-1 rounded-2xl border border-white/10 shadow-sm">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         <div className="text-center pt-1 pb-4">
-          <div className="inline-flex items-center justify-center gap-2 mb-2 bg-white px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-            <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
+          <div className="inline-flex items-center justify-center gap-2 mb-2 bg-slate-900/70 backdrop-blur-md px-4 py-1.5 rounded-full border border-amber-400/40 shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span className="text-xs font-bold text-amber-300 tracking-wide uppercase">
               {t('auth_badge')}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md">
             {t('auth_title')}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-sm mx-auto">
+          <p className="text-xs sm:text-sm text-slate-200 mt-1.5 max-w-md mx-auto drop-shadow leading-relaxed font-medium">
             {t('auth_subtitle')}
           </p>
         </div>
       </div>
 
       {/* Main Auth Card */}
-      <div className="max-w-md w-full mx-auto bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 overflow-hidden">
+      <div className="max-w-md w-full mx-auto bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black/40 border border-white/60 overflow-hidden relative z-10">
         {/* Tab Switcher */}
         <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5">
           <button
@@ -427,7 +434,7 @@ export const AuthView: React.FC = () => {
       </div>
 
       {/* Footer copyright */}
-      <div className="max-w-md w-full mx-auto text-center pt-4 pb-2 text-[11px] text-slate-400">
+      <div className="max-w-md w-full mx-auto text-center pt-4 pb-2 text-[11px] text-slate-300 font-medium drop-shadow relative z-10">
         {t('auth_footer_copyright')}
       </div>
     </div>
