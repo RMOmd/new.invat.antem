@@ -25,6 +25,7 @@ interface AuthContextType {
   changeUserRole: (userId: string, newRole: UserRole) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   refreshUsersList: () => Promise<void>;
+  syncLocalUsersToSupabase: () => Promise<{ count: number; error?: string }>;
   logout: () => void;
   saveProgress: (progress: ActivityProgress) => Promise<void>;
   submitAssignment: (activityId: string, activityTitle: string, text: string) => Promise<void>;
@@ -168,6 +169,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.warn('Failed to sync profiles from Supabase', err);
       }
+    }
+  };
+
+  // Sync all local users to Supabase profiles
+  const syncLocalUsersToSupabase = async (): Promise<{ count: number; error?: string }> => {
+    const supabase = getSupabase();
+    if (!supabase) return { count: 0, error: 'Supabase nu este configurat' };
+    try {
+      const records = usersList.map(u => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role
+      }));
+      const { error } = await supabase.from('profiles').upsert(records, { onConflict: 'id' });
+      if (error) return { count: 0, error: error.message };
+      await refreshUsersList();
+      return { count: records.length };
+    } catch (e: any) {
+      return { count: 0, error: e?.message || 'Eroare la sincronizare' };
     }
   };
 
@@ -529,6 +550,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         changeUserRole,
         deleteUser,
         refreshUsersList,
+        syncLocalUsersToSupabase,
         logout,
         saveProgress,
         submitAssignment,

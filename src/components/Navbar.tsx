@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Key,
-  Link as LinkIcon
+  Link as LinkIcon,
+  UploadCloud
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -32,7 +33,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise }) => {
-  const { currentUser, usersList, changeUserRole, deleteUser, refreshUsersList, logout } = useAuth();
+  const { currentUser, usersList, changeUserRole, deleteUser, refreshUsersList, syncLocalUsersToSupabase, logout } = useAuth();
   const { t } = useLanguage();
 
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -41,6 +42,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
   // Admin search state
   const [adminSearch, setAdminSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [adminTab, setAdminTab] = useState<'users' | 'database'>('users');
   const [sbUrl, setSbUrl] = useState(() => getSavedSupabaseConfig().url);
   const [sbKey, setSbKey] = useState(() => getSavedSupabaseConfig().anonKey);
@@ -77,6 +80,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
       await refreshUsersList();
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleSyncToSupabase = async () => {
+    setIsSyncing(true);
+    setSyncStatus(null);
+    try {
+      const res = await syncLocalUsersToSupabase();
+      if (res.error) {
+        setSyncStatus(`Error: ${res.error}`);
+      } else {
+        setSyncStatus(`OK: ${res.count} utilizatori sincronizați cu Supabase!`);
+      }
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -258,15 +276,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
               </div>
 
               {adminTab === 'users' && (
-                <button
-                  type="button"
-                  onClick={handleRefreshUsers}
-                  disabled={isRefreshing}
-                  className="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer shrink-0"
-                  title="Sincronizează din Supabase"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleSyncToSupabase}
+                    disabled={isSyncing}
+                    className="py-1.5 px-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                    title={t('btn_sync_to_supabase')}
+                  >
+                    <UploadCloud className={`w-3.5 h-3.5 ${isSyncing ? 'animate-bounce' : ''}`} />
+                    <span className="hidden sm:inline">{t('btn_sync_to_supabase')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRefreshUsers}
+                    disabled={isRefreshing}
+                    className="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                    title="Sincronizează din Supabase"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               )}
             </div>
 
@@ -308,6 +339,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+
+                {syncStatus && (
+                  <div className={`mb-3 p-2.5 rounded-xl border text-xs flex items-center gap-2 ${
+                    syncStatus.startsWith('OK')
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}>
+                    {syncStatus.startsWith('OK') ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    )}
+                    <span>{syncStatus}</span>
+                  </div>
+                )}
 
                 {/* Users list */}
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1 max-h-[50vh]">
