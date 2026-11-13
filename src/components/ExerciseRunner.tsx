@@ -83,6 +83,10 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     setSubmittedSuccess(!!savedProgress?.completed && isAssignmentType);
     setOrderHintTrigger(0);
     setMatchingHintTrigger(0);
+    // Always scroll page and any scrollable container to top when switching exercises
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [activity.id, savedProgress, isAssignmentType]);
 
   const isGapCorrect = (gapIndex: number): boolean => {

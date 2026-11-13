@@ -101,6 +101,7 @@ const AppContent: React.FC = () => {
       try {
         localStorage.setItem('romanian_last_active_activity', prevAct.id);
       } catch {}
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
 
@@ -119,6 +120,7 @@ const AppContent: React.FC = () => {
       try {
         localStorage.setItem('romanian_last_active_activity', nextAct.id);
       } catch {}
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
 
