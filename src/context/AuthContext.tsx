@@ -85,6 +85,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return [];
   });
 
+  // Listen for Supabase session / email confirmation tokens in URL (#access_token=...)
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && session?.user) {
+        const user = session.user;
+        const cleanEmail = (user.email || '').toLowerCase();
+
+        let resolvedRole: UserRole = 'student';
+        let resolvedName = user.user_metadata?.name || user.email?.split('@')[0] || 'Utilizator';
+
+        try {
+          const { data: profileRow } = await supabase
+            .from('profiles')
+            .select('role, name')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (profileRow?.role) {
+            resolvedRole = profileRow.role as UserRole;
+          } else if (cleanEmail === 'admin@antem.org') {
+            resolvedRole = 'admin';
+          }
+
+          if (profileRow?.name) {
+            resolvedName = profileRow.name;
+          }
+        } catch (e) {}
+
+        const profile: UserProfile = {
+          id: user.id,
+          email: cleanEmail,
+          name: resolvedName,
+          role: resolvedRole
+        };
+
+        setCurrentUser(profile);
+        localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(profile));
+
+        setUsersList(prev => {
+          const filtered = prev.filter(u => u.email.toLowerCase() !== cleanEmail);
+          const updated = [...filtered, profile];
+          localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+          return updated;
+        });
+
+        // Clean access_token from URL hash if present
+        if (window.location.hash.includes('access_token')) {
+          const cleanUrl = window.location.pathname + window.location.search;
+          window.history.replaceState(null, '', cleanUrl);
+        }
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+
   // Load progress when user changes
   useEffect(() => {
     if (!currentUser) {
