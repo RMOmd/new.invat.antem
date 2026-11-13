@@ -231,6 +231,89 @@
   line-height: 1.6 !important;
 }
 
+/* Clock AM/PM Grid layout for 3. A. Vocabular / Pag 2 (Act 2162) */
+.clock-am-pm-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 1rem !important;
+  max-width: 850px !important;
+  margin: 1.5rem auto !important;
+  width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .clock-am-pm-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+.clock-column-header {
+  grid-column: 1 / -1;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  background: #fff7ed !important;
+  border: 1.5px solid #ffc78e !important;
+  border-radius: 14px !important;
+  padding: 8px 16px !important;
+  margin-top: 1rem !important;
+}
+
+.clock-column-header:first-child {
+  margin-top: 0 !important;
+}
+
+.clock-ampm-badge {
+  width: 44px !important;
+  height: 44px !important;
+  object-fit: contain !important;
+  border-radius: 50% !important;
+}
+
+.clock-ampm-title {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #9a3412 !important;
+}
+
+.clock-card {
+  padding: 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  background: #ffffff !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+.clock-img-wrap {
+  width: 100% !important;
+  height: 140px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.clock-img-wrap img {
+  max-height: 100% !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+}
+
+.clock-card .GapSpan {
+  width: 100% !important;
+}
+
+.clock-card select.GapBox {
+  width: 100% !important;
+  max-width: 100% !important;
+  font-size: 0.95rem !important;
+  padding: 8px 10px !important;
+}
+
 /* Original ANTEM course warm styling */
 .color_text_bg {
   margin: 1.25rem 0;
