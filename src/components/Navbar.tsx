@@ -3,20 +3,8 @@ import { useAuth, UserRole } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import {
-  getSavedSupabaseConfig,
-  saveSupabaseConfig,
-  isSupabaseConfigured,
-  clearSupabaseConfig,
-  testSupabaseConnection
-} from '../lib/supabase';
-import {
   User,
-  Settings,
-  Database,
-  Check,
   LogOut,
-  CheckCircle2,
-  AlertCircle,
   RefreshCw,
   Shield,
   ShieldCheck,
@@ -37,35 +25,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
 
   // Admin search state
   const [adminSearch, setAdminSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Supabase config state
-  const [sbConfig, setSbConfig] = useState(getSavedSupabaseConfig());
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  const isConfigured = isSupabaseConfigured();
   const isAdmin = currentUser?.role === 'admin';
-
-  const handleTestConnection = async () => {
-    setTestingConnection(true);
-    setTestResult(null);
-    try {
-      const res = await testSupabaseConnection(sbConfig.url, sbConfig.anonKey);
-      setTestResult(res);
-    } finally {
-      setTestingConnection(false);
-    }
-  };
-
-  const handleSaveSbConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    saveSupabaseConfig(sbConfig);
-  };
 
   const handleRefreshUsers = async () => {
     setIsRefreshing(true);
@@ -100,22 +65,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Language Switcher */}
             <LanguageSwitcher />
-
-            {/* Supabase status / config button */}
-            <button
-              type="button"
-              onClick={() => {
-                setTestResult(null);
-                setShowConfigModal(true);
-              }}
-              className="p-1.5 sm:p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer relative"
-              title={isConfigured ? 'Supabase: Conectat (Cloud)' : t('sb_modal_title')}
-            >
-              <Database className={`w-4 h-4 sm:w-5 sm:h-5 ${isConfigured ? 'text-emerald-600' : 'text-slate-500'}`} />
-              {isConfigured && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
-              )}
-            </button>
 
             {/* Admin Panel button (Only visible to admin) */}
             {isAdmin && (
@@ -384,105 +333,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                 {t('btn_close')}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Supabase Connection Modal */}
-      {showConfigModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Database className="w-5 h-5 text-emerald-600" />
-                {t('sb_modal_title')}
-              </h2>
-              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 ${
-                isConfigured ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {isConfigured ? '● Conectat' : 'Mod local'}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mb-4">
-              {t('sb_modal_desc')}
-            </p>
-
-            {testResult && (
-              <div className={`mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
-                testResult.success
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  : 'bg-rose-50 text-rose-800 border border-rose-200'
-              }`}>
-                {testResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-                <span>{testResult.message}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveSbConfig} className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Project URL:</label>
-                <input
-                  type="text"
-                  placeholder="https://xyzcompany.supabase.co"
-                  value={sbConfig.url}
-                  onChange={e => setSbConfig({ ...sbConfig, url: e.target.value })}
-                  className="w-full text-xs font-mono px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Anon Public Key:</label>
-                <textarea
-                  rows={3}
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  value={sbConfig.anonKey}
-                  onChange={e => setSbConfig({ ...sbConfig, anonKey: e.target.value })}
-                  className="w-full text-xs font-mono px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleTestConnection}
-                  disabled={testingConnection || !sbConfig.url || !sbConfig.anonKey}
-                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${testingConnection ? 'animate-spin' : ''}`} />
-                  {testingConnection ? 'Se testează...' : 'Testează conexiunea'}
-                </button>
-
-                {isConfigured && (
-                  <button
-                    type="button"
-                    onClick={clearSupabaseConfig}
-                    className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                  >
-                    Deconectează
-                  </button>
-                )}
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl text-[11px] text-slate-600 leading-relaxed">
-                💡 <em>{t('sb_modal_note')}</em>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs"
-                >
-                  {t('btn_save_reload')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-                >
-                  {t('btn_close')}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

@@ -93,6 +93,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const supabase = getSupabase();
     if (supabase) {
+      // Sync profile to Supabase public.profiles
+      supabase.from('profiles').upsert({
+        id: currentUser.id,
+        email: currentUser.email,
+        name: currentUser.name,
+        role: currentUser.role
+      }).then(() => {});
+
       // Load from Supabase
       supabase
         .from('user_progress')
@@ -172,6 +180,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginAs = (user: UserProfile) => {
     setCurrentUser(user);
     localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(user));
+
+    const supabase = getSupabase();
+    if (supabase) {
+      supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }).then(({ error }) => {
+        if (error) console.warn('Profile sync notice:', error.message);
+      });
+    }
   };
 
   const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
@@ -262,15 +282,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!cleanEmail || !cleanEmail.includes('@')) return { success: false, error: 'Introduceți o adresă de e-mail validă.' };
     if (cleanPass.length < 6) return { success: false, error: 'Parola trebuie să conțină cel puțin 6 caractere.' };
 
-    // Check if email is already registered locally
-    const existing = usersList.find(u => u.email.toLowerCase() === cleanEmail);
-    if (existing) {
-      return {
-        success: false,
-        error: 'Un cont cu această adresă de e-mail există deja. Autentificați-vă.'
-      };
-    }
-
     let userId = `usr-${Date.now()}`;
 
     // Register in Supabase if connected
@@ -285,10 +296,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
         if (error) {
-          console.warn('Supabase signup notice:', error.message);
-        } else if (data.user) {
+          return { success: false, error: `Supabase: ${error.message}` };
+        }
+        if (data.user) {
           userId = data.user.id;
-          // Ensure profile is saved with role 'student'
           try {
             await supabase.from('profiles').upsert({
               id: userId,
@@ -296,10 +307,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: cleanName,
               role: 'student'
             });
-          } catch {}
+          } catch (e) {
+            console.error('Failed to upsert profile in Supabase', e);
+          }
         }
-      } catch (err) {
-        console.warn('Supabase signup error fallback:', err);
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Eroare Supabase' };
+      }
+    } else {
+      const existing = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+      if (existing) {
+        return {
+          success: false,
+          error: 'Un cont cu această adresă de e-mail există deja. Autentificați-vă.'
+        };
       }
     }
 
@@ -312,7 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString()
     };
 
-    const updated = [...usersList, newUser];
+    const updated = [...usersList.filter(u => u.email.toLowerCase() !== cleanEmail), newUser];
     setUsersList(updated);
     localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
     loginAs(newUser);
