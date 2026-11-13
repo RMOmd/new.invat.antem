@@ -30,6 +30,7 @@ interface AuthContextType {
   saveProgress: (progress: ActivityProgress) => Promise<void>;
   submitAssignment: (activityId: string, activityTitle: string, text: string, aiEvaluation?: AIEvaluationResult) => Promise<void>;
   reviewSubmission: (submissionId: string, grade: number, feedback: string) => Promise<void>;
+  deleteSubmission: (submissionId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -630,6 +631,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteSubmission = async (submissionId: string) => {
+    setAllSubmissions(prev => {
+      const updated = prev.filter(s => s.id !== submissionId);
+      localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase
+          .from('submissions')
+          .delete()
+          .eq('id', submissionId);
+      } catch (e) {
+        console.error('Supabase delete submission error', e);
+      }
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -648,7 +669,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         saveProgress,
         submitAssignment,
-        reviewSubmission
+        reviewSubmission,
+        deleteSubmission
       }}
     >
       {children}

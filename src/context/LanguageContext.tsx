@@ -211,6 +211,8 @@ export const translations: Record<Language, Record<string, string>> = {
     subs_feedback_label: 'Comentariul profesorului:',
     subs_btn_grade: 'Evaluează lucrarea',
     subs_btn_save_grade: 'Salvează nota și comentariul',
+    subs_btn_delete: 'Șterge lucrarea',
+    subs_confirm_delete: 'Sigur doriți să ștergeți această lucrare?',
     subs_grade_ph: 'Introduceți nota (1-10)',
     subs_feedback_ph: 'Scrieți feedback-ul și recomandările pentru student...'
   },
@@ -415,6 +417,8 @@ export const translations: Record<Language, Record<string, string>> = {
     subs_feedback_label: 'Комментарий преподавателя:',
     subs_btn_grade: 'Оценить работу',
     subs_btn_save_grade: 'Сохранить оценку и комментарий',
+    subs_btn_delete: 'Удалить работу',
+    subs_confirm_delete: 'Вы уверены, что хотите удалить эту работу?',
     subs_grade_ph: 'Введите оценку (1-10)',
     subs_feedback_ph: 'Напишите комментарий и рекомендации для студента...'
   },
@@ -619,6 +623,8 @@ export const translations: Record<Language, Record<string, string>> = {
     subs_feedback_label: 'Teacher feedback:',
     subs_btn_grade: 'Grade submission',
     subs_btn_save_grade: 'Save grade & feedback',
+    subs_btn_delete: 'Delete submission',
+    subs_confirm_delete: 'Are you sure you want to delete this submission?',
     subs_grade_ph: 'Enter grade (1-10)',
     subs_feedback_ph: 'Write feedback and recommendations for the student...'
   }

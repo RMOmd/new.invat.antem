@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
-import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye } from 'lucide-react';
+import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2 } from 'lucide-react';
 
 interface ParsedFeedback {
   summary: string;
@@ -147,7 +147,7 @@ export const FormattedFeedback: React.FC<{ feedback: string }> = ({ feedback }) 
 };
 
 export const SubmissionsView: React.FC = () => {
-  const { currentUser, allSubmissions, reviewSubmission } = useAuth();
+  const { currentUser, allSubmissions, reviewSubmission, deleteSubmission } = useAuth();
   const { t } = useLanguage();
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [gradeInput, setGradeInput] = useState<number>(10);
@@ -228,14 +228,31 @@ export const SubmissionsView: React.FC = () => {
                     </h3>
                   </div>
 
-                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full shrink-0 w-fit ${
-                    isReviewed
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {isReviewed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                    {isReviewed ? `Verificat • Nota ${sub.grade}/10` : 'În așteptare'}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full shrink-0 w-fit ${
+                      isReviewed
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {isReviewed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                      {isReviewed ? `Verificat • Nota ${sub.grade}/10` : 'În așteptare'}
+                    </span>
+
+                    {(sub.userId === currentUser?.id || currentUser?.role === 'admin') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(t('subs_confirm_delete'))) {
+                            deleteSubmission(sub.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title={t('subs_btn_delete')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Student's answer */}
