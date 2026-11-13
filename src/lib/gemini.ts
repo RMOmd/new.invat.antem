@@ -2,18 +2,40 @@ import { AIEvaluationResult } from '../types/course';
 
 const GEMINI_LOCAL_KEY = 'romanian_gemini_api_key';
 
+declare const __GEMINI_API_KEY__: string | undefined;
+
 export function getGeminiApiKey(): string {
-  const local = localStorage.getItem(GEMINI_LOCAL_KEY);
-  if (local && local.trim().length > 10) return local.trim();
+  // 1. Check localStorage first (user manual input in browser)
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const local = localStorage.getItem(GEMINI_LOCAL_KEY);
+    if (local && local.trim().length > 10) return local.trim();
+  }
 
-  const envKey =
-    (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-    (import.meta as any).env?.GEMINI_API_KEY ||
-    (import.meta as any).env?.API_KEY ||
-    (window as any).__GEMINI_API_KEY__ ||
-    '';
+  // 2. Check build-time replaced constant
+  try {
+    if (typeof __GEMINI_API_KEY__ !== 'undefined' && __GEMINI_API_KEY__ && __GEMINI_API_KEY__.trim().length > 10) {
+      return __GEMINI_API_KEY__.trim();
+    }
+  } catch (e) {
+    // ignore
+  }
 
-  return String(envKey).trim();
+  // 3. Check Vite import.meta.env
+  try {
+    const metaEnv = (import.meta as any).env;
+    const envKey =
+      metaEnv?.VITE_GEMINI_API_KEY ||
+      metaEnv?.GEMINI_API_KEY ||
+      metaEnv?.API_KEY ||
+      '';
+    if (envKey && String(envKey).trim().length > 10) {
+      return String(envKey).trim();
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return '';
 }
 
 export function isGeminiConfigured(): boolean {
@@ -50,7 +72,7 @@ export async function evaluateEssayWithGemini(
 ): Promise<AIEvaluationResult> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
-    throw new Error('Cheia API Gemini nu este configurată. Vă rugăm să adăugați cheia în setări sau în fișierul .env.');
+    throw new Error('Cheia API Gemini nu este configurată.');
   }
 
   const cleanText = studentText.trim();
@@ -127,7 +149,6 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
         const errJson = await response.json().catch(() => ({}));
         const errMsg = errJson.error?.message || `HTTP ${response.status}`;
         console.warn(`Model ${model} returned error: ${errMsg}`);
-        // If 404 or model unavailable, try next candidate
         if (response.status === 404 || response.status === 503 || response.status === 400) {
           lastError = new Error(`Model ${model}: ${errMsg}`);
           continue;
@@ -153,4 +174,3 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
 
   throw lastError || new Error('Nu s-a putut conecta la serviciul Gemini AI.');
 }
-

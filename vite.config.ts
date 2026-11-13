@@ -20,7 +20,8 @@ export default defineConfig(({ mode }) => {
       open: true
     },
     define: {
-      'window.__GEMINI_API_KEY__': JSON.stringify(geminiKey)
+      '__GEMINI_API_KEY__': JSON.stringify(geminiKey),
+      'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(geminiKey)
     }
   };
 });

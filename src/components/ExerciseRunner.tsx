@@ -6,7 +6,7 @@ import { DialogueReorder } from './DialogueReorder';
 import { QuizRunner } from './QuizRunner';
 import { MatchingRunner } from './MatchingRunner';
 import { AudioPlaylistRunner } from './AudioPlaylistRunner';
-import { evaluateEssayWithGemini } from '../lib/gemini';
+import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
 import { CheckCircle2, RotateCcw, Lightbulb, Send, Award, ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles, Copy, Check, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -69,6 +69,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const [aiEvaluation, setAiEvaluation] = useState<AIEvaluationResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [copiedImproved, setCopiedImproved] = useState(false);
+  const [showKeyPrompt, setShowKeyPrompt] = useState(false);
+  const [keyInput, setKeyInput] = useState('');
 
   // Dialogue ordering state
   const [orderCorrectCount, setOrderCorrectCount] = useState(0);
@@ -366,6 +368,10 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       textarea?.focus();
       return;
     }
+    if (!isGeminiConfigured()) {
+      setShowKeyPrompt(true);
+      return;
+    }
     setIsAiEvaluating(true);
     setAiError(null);
     try {
@@ -377,6 +383,9 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       setAiEvaluation(result);
     } catch (err: any) {
       console.error('AI check error:', err);
+      if (!isGeminiConfigured() || err.message?.includes('nu este configurată')) {
+        setShowKeyPrompt(true);
+      }
       setAiError(err.message || 'Eroare la verificarea textului cu AI.');
     } finally {
       setIsAiEvaluating(false);
@@ -677,6 +686,63 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
               </div>
             </div>
           </form>
+
+          {showKeyPrompt && (
+            <div className="mt-4 p-4 bg-purple-50/90 border-2 border-purple-300 rounded-2xl shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs sm:text-sm font-bold text-purple-950 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  Configurare cheie API Gemini (Gratuit)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowKeyPrompt(false)}
+                  className="text-xs text-purple-400 hover:text-purple-700 font-bold p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-purple-900 leading-relaxed">
+                Pentru activarea asistentului AI, introduceți cheia API gratuită de pe{' '}
+                <a
+                  href="https://aistudio.google.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold underline text-purple-700 hover:text-purple-950"
+                >
+                  Google AI Studio
+                </a>{' '}
+                (se obține gratuit în 30 de secunde, fără card bancar):
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="password"
+                  value={keyInput}
+                  onChange={e => setKeyInput(e.target.value)}
+                  placeholder="Introduceți cheia API (ex: AQ.Ab8...)"
+                  className="flex-1 px-3.5 py-2 text-xs sm:text-sm bg-white border border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono shadow-inner"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (keyInput.trim()) {
+                      saveGeminiApiKey(keyInput.trim());
+                      setShowKeyPrompt(false);
+                      setAiError(null);
+                      // Trigger evaluation immediately with saved key
+                      setTimeout(() => {
+                        handleAiCheck();
+                      }, 100);
+                    }
+                  }}
+                  disabled={!keyInput.trim()}
+                  className="px-5 py-2 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  Salvează cheia
+                </button>
+              </div>
+            </div>
+          )}
 
           {aiError && (
             <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
