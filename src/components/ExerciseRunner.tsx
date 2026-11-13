@@ -590,27 +590,14 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         )}
       </div>
 
-      {/* Assignment submission block for open questions / teacher review */}
-      {!isPlaylistType && (
-        <div className={`rounded-2xl p-4 sm:p-6 mb-6 shadow-xs border transition-all ${
-          isAssignmentType
-            ? 'bg-amber-50 bg-gradient-to-br from-amber-50/90 to-orange-50/90 border-amber-300 ring-1 ring-amber-200'
-            : 'bg-amber-50 bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
-        }`}>
+      {/* Assignment submission block only for assignments (essay / writing tasks) */}
+      {isAssignmentType && (
+        <div className="rounded-2xl p-4 sm:p-6 mb-6 shadow-xs border transition-all bg-amber-50 bg-gradient-to-br from-amber-50/90 to-orange-50/90 border-amber-300 ring-1 ring-amber-200">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm sm:text-base font-bold text-amber-950 flex items-center gap-2">
               <Send className="w-5 h-5 text-amber-600 shrink-0" />
-              {isAssignmentType ? t('assign_teacher_title') : t('assign_student_title')}
+              {t('assign_teacher_title')}
             </h3>
-            {!isAssignmentType && (
-              <button
-                type="button"
-                onClick={() => setIsSubmitting(!isSubmitting)}
-                className="text-xs font-semibold text-amber-800 underline hover:text-amber-950 cursor-pointer"
-              >
-                {isSubmitting ? t('assign_btn_cancel') : t('assign_btn_write')}
-              </button>
-            )}
           </div>
 
           {submittedSuccess && (
@@ -620,31 +607,29 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             </div>
           )}
 
-          {(isAssignmentType || isSubmitting) && (
-            <form onSubmit={handleSubmitWork} className="mt-3">
-              <textarea
-                id="assignment-textarea"
-                rows={isAssignmentType ? 6 : 4}
-                value={submissionText}
-                onChange={e => setSubmissionText(e.target.value)}
-                placeholder={isAssignmentType ? t('assign_ph_structured') : t('assign_ph_standard')}
-                className="w-full text-base p-3.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3 shadow-inner"
-                required
-              />
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-amber-800 font-medium">
-                  {t('assign_chars_count', { count: submissionText.length })}
-                </span>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                  {t('assign_btn_submit')}
-                </button>
-              </div>
-            </form>
-          )}
+          <form onSubmit={handleSubmitWork} className="mt-3">
+            <textarea
+              id="assignment-textarea"
+              rows={6}
+              value={submissionText}
+              onChange={e => setSubmissionText(e.target.value)}
+              placeholder={t('assign_ph_structured')}
+              className="w-full text-base p-3.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3 shadow-inner"
+              required
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-amber-800 font-medium">
+                {t('assign_chars_count', { count: submissionText.length })}
+              </span>
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                {t('assign_btn_submit')}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
