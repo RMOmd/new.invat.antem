@@ -27,7 +27,9 @@
   padding: 1.25rem 1.5rem !important;
   line-height: 1.6 !important;
   font-size: 0.95rem !important;
-  display: inline-block;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   border: none !important;
 }
@@ -650,6 +652,46 @@ span[id^="tooltip_content"] {
     max-width: 180px;
     border: none !important;
     padding: 0.25rem;
+  }
+
+  /* Responsive styling for two-column dialogue/presentation tables (.color_text_bg) on mobile */
+  .color_text_bg,
+  .prose .color_text_bg,
+  table.color_text_bg {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .color_text_bg tbody,
+  .color_text_bg tr,
+  .prose .color_text_bg tbody,
+  .prose .color_text_bg tr {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    border: none !important;
+  }
+
+  .color_text_bg td,
+  .prose .color_text_bg td {
+    display: block !important;
+    width: 100% !important;
+    padding: 0.5rem 0 !important;
+    border: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .color_text_bg img,
+  .prose .color_text_bg img {
+    margin: 1rem auto 0 auto !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    display: block !important;
+    max-width: 100% !important;
+    height: auto !important;
   }
 }
 
