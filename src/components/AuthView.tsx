@@ -109,7 +109,7 @@ export const AuthView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-100 via-blue-50/40 to-slate-100 flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-blue-50/40 to-slate-100 flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
       {/* Top Header / Language Switcher & Branding */}
       <div className="max-w-md w-full mx-auto">
         <div className="flex items-center justify-end mb-2">
@@ -118,7 +118,7 @@ export const AuthView: React.FC = () => {
 
         <div className="text-center pt-1 pb-4">
           <div className="inline-flex items-center justify-center gap-2 mb-2 bg-white px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-2xs">
-            <span className="text-xl leading-none">🇷🇴</span>
+            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
             <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
               {t('auth_badge')}
             </span>
@@ -254,7 +254,7 @@ export const AuthView: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold rounded-2xl text-sm shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold rounded-2xl text-sm shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {loading ? (
                   <span>{t('auth_btn_checking')}</span>
@@ -448,7 +448,7 @@ export const AuthView: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-3 px-4 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] text-white font-bold rounded-2xl text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full mt-2 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] text-white font-bold rounded-2xl text-sm shadow-md shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {loading ? (
                   <span>{t('auth_btn_creating')}</span>

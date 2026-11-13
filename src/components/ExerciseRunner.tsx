@@ -590,8 +590,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       {!isPlaylistType && (
         <div className={`rounded-2xl p-4 sm:p-6 mb-6 shadow-xs border transition-all ${
           isAssignmentType
-            ? 'bg-linear-to-br from-amber-50/90 to-orange-50/90 border-amber-300 ring-1 ring-amber-200'
-            : 'bg-linear-to-r from-amber-50 to-orange-50 border-amber-200'
+            ? 'bg-amber-50 bg-gradient-to-br from-amber-50/90 to-orange-50/90 border-amber-300 ring-1 ring-amber-200'
+            : 'bg-amber-50 bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
         }`}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm sm:text-base font-bold text-amber-950 flex items-center gap-2">

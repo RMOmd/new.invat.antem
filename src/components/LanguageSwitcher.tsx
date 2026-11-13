@@ -8,10 +8,10 @@ interface LanguageSwitcherProps {
 export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = '' }) => {
   const { language, setLanguage } = useLanguage();
 
-  const options: { code: Language; label: string; flag: string }[] = [
-    { code: 'ro', label: 'RO', flag: '🇷🇴' },
-    { code: 'ru', label: 'RU', flag: '🇷🇺' },
-    { code: 'en', label: 'EN', flag: '🇬🇧' }
+  const options: { code: Language; label: string }[] = [
+    { code: 'ro', label: 'RO' },
+    { code: 'ru', label: 'RU' },
+    { code: 'en', label: 'EN' }
   ];
 
   return (
@@ -23,19 +23,17 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = 
             key={opt.code}
             type="button"
             onClick={() => setLanguage(opt.code)}
-            className={`px-2 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
               isActive
                 ? 'bg-white text-blue-600 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
-            title={`Schimbă limba: ${opt.label}`}
+            title={`Limba / Язык / Language: ${opt.label}`}
           >
-            <span className="text-[11px] leading-none">{opt.flag}</span>
-            <span className="text-[11px] leading-none">{opt.label}</span>
+            {opt.label}
           </button>
         );
       })}
     </div>
   );
 };
-
