@@ -484,6 +484,87 @@
   text-align: right !important;
 }
 
+/* Verb Conjugation Responsive Cards (5. B. Gramatică / Pag 2) */
+.verb-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+  max-width: 900px !important;
+  margin: 1.5rem auto !important;
+  width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .verb-cards-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .verb-cards-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+}
+
+.verb-card {
+  background: #ffffff !important;
+  border: 1.5px solid #ffc78e !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.verb-card-header {
+  background-color: #ffc78e !important;
+  color: #4a3b47 !important;
+  font-weight: 800 !important;
+  font-size: 0.95rem !important;
+  text-align: center !important;
+  padding: 8px 10px !important;
+}
+
+.verb-card-body {
+  padding: 8px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  background-color: #fffdfb !important;
+  flex: 1 !important;
+}
+
+.verb-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: baseline !important;
+  font-size: 0.88rem !important;
+  padding: 3px 0 !important;
+  border-bottom: 1px dashed #ffe8cc !important;
+}
+
+.verb-row:last-child {
+  border-bottom: none !important;
+}
+
+.verb-pronoun {
+  color: #64748b !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+}
+
+.verb-form {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+  text-align: right !important;
+}
+
+.verb-form b {
+  color: #c2410c !important;
+}
+
 /* Original ANTEM course warm styling */
 .color_text_bg {
   margin: 1.25rem 0;
