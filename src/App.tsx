@@ -29,9 +29,9 @@ const AppContent: React.FC = () => {
 
   const { currentUser, allProgress, saveProgress, submitAssignment, allSubmissions } = useAuth();
 
-  // Load course data from JSON
+  // Load course data from JSON (with cache buster to guarantee freshest exercises)
   useEffect(() => {
-    fetch('./course_data.json')
+    fetch('./course_data.json?v=' + Date.now())
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         return res.json();
