@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { CheckCircle2, Clock, MessageSquare, Send, Award, User } from 'lucide-react';
 
 export const SubmissionsView: React.FC = () => {
   const { currentUser, allSubmissions, reviewSubmission } = useAuth();
+  const { t } = useLanguage();
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [gradeInput, setGradeInput] = useState<number>(10);
   const [feedbackInput, setFeedbackInput] = useState('');
@@ -26,27 +28,25 @@ export const SubmissionsView: React.FC = () => {
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-xs">
         <div className="flex items-center justify-between gap-2 mb-1">
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-            {isTeacher ? 'Verificarea temelor (Panoul Profesorului)' : 'Temele mele trimise spre verificare'}
+            {isTeacher ? t('subs_teacher_title') : t('subs_student_title')}
           </h1>
           <span className={`text-xs font-bold px-3 py-1 rounded-full ${
             isTeacher ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
           }`}>
-            {isTeacher ? 'Profesor' : 'Student'}
+            {isTeacher ? t('role_teacher') : t('role_student')}
           </span>
         </div>
         <p className="text-sm text-slate-500">
-          {isTeacher
-            ? 'Aici puteți citi răspunsurile scrise ale tuturor studenților, acorda note și lăsa comentarii.'
-            : 'Aici vedeți stadiul lucrărilor trimise, nota acordată și comentariile profesorului.'}
+          {isTeacher ? t('subs_teacher_desc') : t('subs_student_desc')}
         </p>
       </div>
 
       {visibleSubmissions.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-500 shadow-2xs">
           <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-          <p className="font-semibold text-slate-700">Nu există teme trimise încă</p>
+          <p className="font-semibold text-slate-700">{t('subs_empty_title')}</p>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Pentru a trimite o compunere sau un dialog la verificare, deschideți orice exercițiu din curs și folosiți blocul «Trimiteți tema profesorului».
+            {t('subs_empty_desc')}
           </p>
         </div>
       ) : (
@@ -99,7 +99,7 @@ export const SubmissionsView: React.FC = () => {
                 {isReviewed && sub.teacherFeedback && (
                   <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 text-sm text-emerald-900 mb-2">
                     <span className="text-xs font-bold text-emerald-700 flex items-center gap-1 mb-1">
-                      <Award className="w-3.5 h-3.5" /> Comentariul profesorului:
+                      <Award className="w-3.5 h-3.5" /> {t('subs_feedback_label')}
                     </span>
                     {sub.teacherFeedback}
                   </div>
@@ -111,7 +111,7 @@ export const SubmissionsView: React.FC = () => {
                     {selectedSubId === sub.id ? (
                       <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-200 space-y-3">
                         <div className="flex items-center gap-3">
-                          <label className="text-xs font-bold text-purple-900">Nota (1 - 10):</label>
+                          <label className="text-xs font-bold text-purple-900">{t('subs_grade_label')} (1 - 10):</label>
                           <input
                             type="number"
                             min={1}
@@ -122,12 +122,12 @@ export const SubmissionsView: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="text-xs font-bold text-purple-900 block mb-1">Feedback și corecturi:</label>
+                          <label className="text-xs font-bold text-purple-900 block mb-1">{t('subs_feedback_label')}</label>
                           <textarea
                             rows={3}
                             value={feedbackInput}
                             onChange={e => setFeedbackInput(e.target.value)}
-                            placeholder="Bravo! Greșeli observate: ..."
+                            placeholder={t('subs_feedback_ph')}
                             className="w-full text-sm p-2.5 bg-white border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
                           />
                         </div>
@@ -135,16 +135,16 @@ export const SubmissionsView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleReview(sub.id)}
-                            className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-lg transition-colors"
+                            className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                           >
-                            Salvează evaluarea
+                            {t('subs_btn_save_grade')}
                           </button>
                           <button
                             type="button"
                             onClick={() => setSelectedSubId(null)}
-                            className="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-colors"
+                            className="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-colors cursor-pointer"
                           >
-                            Anulează
+                            {t('assign_btn_cancel')}
                           </button>
                         </div>
                       </div>
@@ -156,9 +156,9 @@ export const SubmissionsView: React.FC = () => {
                           setGradeInput(10);
                           setFeedbackInput('');
                         }}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-2xs"
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
                       >
-                        Verifică această lucrare
+                        {t('subs_btn_grade')}
                       </button>
                     )}
                   </div>

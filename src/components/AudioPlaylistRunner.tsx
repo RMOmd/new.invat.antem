@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AudioTrack } from '../types/course';
+import { useLanguage } from '../context/LanguageContext';
 import { AudioPlayer } from './AudioPlayer';
 import { Music, Play, Disc3, Headphones } from 'lucide-react';
 
@@ -12,6 +13,7 @@ export const AudioPlaylistRunner: React.FC<AudioPlaylistRunnerProps> = ({
   tracks,
   title
 }) => {
+  const { t } = useLanguage();
   const [activeTrackIdx, setActiveTrackIdx] = useState(0);
   const [filterCategory, setFilterCategory] = useState<string>('Toate');
 
@@ -30,7 +32,7 @@ export const AudioPlaylistRunner: React.FC<AudioPlaylistRunnerProps> = ({
           <div className="flex items-center justify-between gap-2 mb-3">
             <span className="text-xs font-bold px-2.5 py-1 bg-blue-600 text-white rounded-md flex items-center gap-1.5 shadow-2xs">
               <Headphones className="w-3.5 h-3.5" />
-              În redare (#{activeTrackIdx + 1}/{tracks.length})
+              {t('audio_now_playing', { current: activeTrackIdx + 1, total: tracks.length })}
             </span>
             <span className="text-xs font-semibold px-2.5 py-1 bg-white/80 border border-blue-200 text-blue-900 rounded-md">
               {currentTrack.category}

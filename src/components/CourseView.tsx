@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CourseData, Section, Activity } from '../types/course';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { ChevronDown, ChevronRight, CheckCircle2, PlayCircle, BookOpen, Search, Sparkles, Headphones, FileEdit, HelpCircle, Puzzle, ArrowRightLeft } from 'lucide-react';
 
 interface CourseViewProps {
@@ -17,6 +18,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
   focusedActivityId
 }) => {
   const { allProgress } = useAuth();
+  const { t } = useLanguage();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('romanian_expanded_sections');
@@ -93,7 +95,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
 
   const calculateSectionStats = (section: Section) => {
     const total = section.activities.length;
-    if (total === 0) return { completed: 0, percent: 0 };
+    if (total === 0) return { completed: 0, percent: 0, total: 0 };
     const completed = section.activities.filter(a => allProgress[a.id]?.completed).length;
     const percent = Math.round((completed / total) * 100);
     return { completed, percent, total };
@@ -125,10 +127,10 @@ export const CourseView: React.FC<CourseViewProps> = ({
             Nivelul A1+ • ANTEM Moldova
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
-            Limba Română pentru începători
+            {t('course_banner_title')}
           </h1>
           <p className="text-blue-100 text-sm sm:text-base max-w-xl">
-            20 de unități tematice, dialoguri autentice, gramatică practică și peste 400 de exerciții interactive.
+            {t('course_banner_desc')}
           </p>
         </div>
       </div>
@@ -140,15 +142,15 @@ export const CourseView: React.FC<CourseViewProps> = ({
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Căutați lecții, vocabular, dialoguri sau gramatică..."
+          placeholder={t('course_search_ph')}
           className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery('')}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 bg-slate-100 px-2 py-1 rounded-md"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 bg-slate-100 px-2 py-1 rounded-md cursor-pointer"
           >
-            Șterge
+            {t('course_search_clear')}
           </button>
         )}
       </div>
@@ -168,7 +170,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
               <button
                 type="button"
                 onClick={() => toggleSection(sec.sectionId)}
-                className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
+                className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -180,7 +182,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         : sec.sectionId.replace('-', ' ').toUpperCase()}
                     </span>
                     <span className="text-xs text-slate-500">
-                      {stats.completed}/{stats.total} finalizate
+                      {t('course_completed_stat', { completed: stats.completed, total: stats.total })}
                     </span>
                   </div>
                   <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">
@@ -233,26 +235,26 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     const orderCount = act.orderItems?.length || 0;
                     const trackCount = act.audioTracks?.length || 0;
 
-                    let typeLabel = 'Lectură / Audio';
+                    let typeLabel = t('course_type_reading');
                     let typeIcon = <BookOpen className="w-5 h-5 text-slate-400" />;
 
                     if (isPlaylist) {
-                      typeLabel = `🎧 Audio suplimentar • ${trackCount} înregistrări`;
+                      typeLabel = `🎧 ${t('course_type_audio')} • ${trackCount}`;
                       typeIcon = <Headphones className="w-5 h-5 text-indigo-600" />;
                     } else if (isAssignment) {
-                      typeLabel = '✍️ Temă scrisă pentru profesor';
+                      typeLabel = `✍️ ${t('course_type_assignment')}`;
                       typeIcon = <FileEdit className="w-5 h-5 text-amber-600" />;
                     } else if (isMatching) {
-                      typeLabel = `🔗 Corelare • ${matchingCount} perechi`;
+                      typeLabel = `🔗 ${t('course_type_matching')} • ${matchingCount}`;
                       typeIcon = <ArrowRightLeft className="w-5 h-5 text-teal-600" />;
                     } else if (quizCount > 0) {
-                      typeLabel = `📝 Test • ${quizCount} întrebări`;
+                      typeLabel = `📝 ${t('course_type_quiz')} • ${quizCount}`;
                       typeIcon = <HelpCircle className="w-5 h-5 text-purple-600" />;
                     } else if (orderCount > 0) {
-                      typeLabel = `🧩 Ordonare • ${orderCount} replici`;
+                      typeLabel = `🧩 ${t('course_type_dialogue')} • ${orderCount}`;
                       typeIcon = <Puzzle className="w-5 h-5 text-blue-600" />;
                     } else if (gapsCount > 0) {
-                      typeLabel = `✏️ Exercițiu • ${gapsCount} spații`;
+                      typeLabel = `✏️ ${t('course_type_gap')} • ${gapsCount}`;
                       typeIcon = <PlayCircle className="w-5 h-5 text-blue-600" />;
                     }
 

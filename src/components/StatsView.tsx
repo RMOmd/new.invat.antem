@@ -1,7 +1,8 @@
 import React from 'react';
 import { CourseData } from '../types/course';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, CheckCircle, Target, Clock, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { Trophy, CheckCircle, Target, Clock, ArrowRight, LogOut, User } from 'lucide-react';
 
 interface StatsViewProps {
   courseData: CourseData;
@@ -9,7 +10,8 @@ interface StatsViewProps {
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({ courseData, onSelectActivityById }) => {
-  const { currentUser, allProgress } = useAuth();
+  const { currentUser, allProgress, logout } = useAuth();
+  const { t } = useLanguage();
 
   // Calculate aggregate stats
   const allActivities = courseData.sections.flatMap(s => s.activities);
@@ -32,53 +34,73 @@ export const StatsView: React.FC<StatsViewProps> = ({ courseData, onSelectActivi
     <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 pb-28">
       {/* Header */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-xs">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">
-          Statistica progresului • {currentUser?.name || 'Student'}
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+                {currentUser?.name || t('role_student')}
+              </h1>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                currentUser?.role === 'teacher' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {currentUser?.role === 'teacher' ? t('role_teacher') : t('role_student')}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-mono mt-0.5">{currentUser?.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            {t('btn_logout')}
+          </button>
+        </div>
         <p className="text-sm text-slate-500">
-          Urmăriți-vă rezultatele învățării limbii române și lucrați asupra greșelilor.
+          {t('stats_header_subtitle')}
         </p>
 
         {/* 4 Key KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
           <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl">
             <div className="flex items-center gap-1.5 text-blue-700 text-xs font-semibold mb-1">
-              <CheckCircle className="w-4 h-4" /> Finalizate
+              <CheckCircle className="w-4 h-4" /> {t('stats_kpi_completed')}
             </div>
             <div className="text-2xl font-extrabold text-blue-900">
               {completedCount} <span className="text-xs font-normal text-slate-500">/ {totalActivities}</span>
             </div>
-            <div className="text-[11px] text-blue-600 mt-0.5">{overallPercent}% din curs</div>
+            <div className="text-[11px] text-blue-600 mt-0.5">{overallPercent}% {t('stats_kpi_of_course')}</div>
           </div>
 
           <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl">
             <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold mb-1">
-              <Trophy className="w-4 h-4" /> Scor mediu
+              <Trophy className="w-4 h-4" /> {t('stats_kpi_avg_score')}
             </div>
             <div className="text-2xl font-extrabold text-emerald-900">
               {averageScore}%
             </div>
-            <div className="text-[11px] text-emerald-600 mt-0.5">precizie răspunsuri</div>
+            <div className="text-[11px] text-emerald-600 mt-0.5">{t('stats_kpi_accuracy')}</div>
           </div>
 
           <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl">
             <div className="flex items-center gap-1.5 text-indigo-700 text-xs font-semibold mb-1">
-              <Target className="w-4 h-4" /> Răspunsuri corecte
+              <Target className="w-4 h-4" /> {t('stats_kpi_correct_answers')}
             </div>
             <div className="text-2xl font-extrabold text-indigo-900">
               {totalGapsCompleted}
             </div>
-            <div className="text-[11px] text-indigo-600 mt-0.5">spații completate</div>
+            <div className="text-[11px] text-indigo-600 mt-0.5">{t('stats_kpi_gaps_filled')}</div>
           </div>
 
           <div className="p-3.5 bg-purple-50/70 border border-purple-200 rounded-xl">
             <div className="flex items-center gap-1.5 text-purple-700 text-xs font-semibold mb-1">
-              <Clock className="w-4 h-4" /> Nivel curent
+              <Clock className="w-4 h-4" /> {t('stats_kpi_current_level')}
             </div>
             <div className="text-2xl font-extrabold text-purple-900">
               A1+
             </div>
-            <div className="text-[11px] text-purple-600 mt-0.5">Elementar superior</div>
+            <div className="text-[11px] text-purple-600 mt-0.5">Antem Moldova</div>
           </div>
         </div>
       </div>
@@ -87,12 +109,9 @@ export const StatsView: React.FC<StatsViewProps> = ({ courseData, onSelectActivi
       {needsReview.length > 0 && (
         <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-5 mb-6 shadow-xs">
           <h2 className="text-base font-bold text-amber-900 mb-2 flex items-center gap-2">
-            <span>⚠️</span> Lecții recomandate pentru repetare ({needsReview.length})
+            <span>⚠️</span> {t('stats_weak_title')} ({needsReview.length})
           </h2>
-          <p className="text-xs text-amber-700 mb-3">
-            În aceste exerciții ați obținut mai puțin de 80%. Re-încercați-le pentru a vă îmbunătăți scorul:
-          </p>
-          <div className="space-y-2">
+          <div className="space-y-2 mt-3">
             {needsReview.map(p => {
               const act = allActivities.find(a => a.id === p.activityId);
               return (
@@ -113,9 +132,9 @@ export const StatsView: React.FC<StatsViewProps> = ({ courseData, onSelectActivi
                     <button
                       type="button"
                       onClick={() => onSelectActivityById(p.activityId)}
-                      className="text-xs font-bold px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg flex items-center gap-1 transition-colors"
+                      className="text-xs font-bold px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
                     >
-                      Repetă <ArrowRight className="w-3.5 h-3.5" />
+                      {t('stats_btn_repeat')} <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>

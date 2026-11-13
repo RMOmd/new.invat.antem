@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MatchingPair } from '../types/course';
+import { useLanguage } from '../context/LanguageContext';
 import { ArrowUp, ArrowDown, CheckCircle2, XCircle, ArrowRightLeft, Sparkles } from 'lucide-react';
 
 interface MatchingRunnerProps {
@@ -20,6 +21,7 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
   onCheckStateChange,
   hintTrigger
 }) => {
+  const { t } = useLanguage();
   // Scramble answers initially
   const [answers, setAnswers] = useState<AnswerSlot[]>(() => {
     const list: AnswerSlot[] = pairs.map((p, idx) => ({ origIdx: idx, text: p.correctAnswer }));
@@ -114,10 +116,10 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
     <div className="mt-6 pt-5 border-t border-slate-200">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <span>🔗</span> Corelați întrebările din stânga cu răspunsurile din dreapta:
+          <span>🔗</span> {t('matching_title')}
         </h3>
         <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-          (folosiți săgețile ▲ ▼ sau alegeți răspunsul)
+          {t('matching_hint_text')}
         </span>
       </div>
 

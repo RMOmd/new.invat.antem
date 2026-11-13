@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { CourseData, Activity, Section } from './types/course';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { Navbar } from './components/Navbar';
 import { BottomNav, TabType } from './components/BottomNav';
 import { CourseView } from './components/CourseView';
 import { ExerciseRunner } from './components/ExerciseRunner';
 import { StatsView } from './components/StatsView';
 import { SubmissionsView } from './components/SubmissionsView';
+import { AuthView } from './components/AuthView';
 import { Loader2, ArrowLeft, BookOpen, BarChart3, Send } from 'lucide-react';
 
 const AppContent: React.FC = () => {
+  const { t } = useLanguage();
   const [courseData, setCourseData] = useState<CourseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +46,11 @@ const AppContent: React.FC = () => {
         setLoading(false);
       });
   }, []);
+
+  // If not logged in, gate access completely and display AuthView
+  if (!currentUser) {
+    return <AuthView />;
+  }
 
   if (loading) {
     return (
@@ -134,7 +142,7 @@ const AppContent: React.FC = () => {
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            Curs & Lecții ({courseData.totalSections} unități)
+            {t('nav_course')} ({t('course_units_count', { count: courseData.totalSections })})
           </button>
 
           <button
@@ -149,7 +157,7 @@ const AppContent: React.FC = () => {
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            Statistici & Progres
+            {t('nav_stats')}
           </button>
 
           <button
@@ -164,7 +172,7 @@ const AppContent: React.FC = () => {
             }`}
           >
             <Send className="w-4 h-4" />
-            Verificare teme
+            {t('nav_submissions')}
             {pendingSubmissionsCount > 0 && (
               <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                 {pendingSubmissionsCount}
@@ -183,10 +191,10 @@ const AppContent: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedActivity(null)}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Înapoi la lista unităților
+                {t('btn_back_to_units')}
               </button>
             </div>
 
@@ -248,9 +256,11 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

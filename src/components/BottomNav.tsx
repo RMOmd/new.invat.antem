@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { BookOpen, BarChart3, Send, User } from 'lucide-react';
 
 export type TabType = 'course' | 'stats' | 'submissions' | 'profile';
@@ -14,11 +15,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onTabChange,
   pendingSubmissionsCount = 0
 }) => {
+  const { t } = useLanguage();
+
   const tabs = [
-    { id: 'course' as TabType, label: 'Curs', icon: BookOpen },
-    { id: 'stats' as TabType, label: 'Statistici', icon: BarChart3 },
-    { id: 'submissions' as TabType, label: 'Teme', icon: Send, badge: pendingSubmissionsCount },
-    { id: 'profile' as TabType, label: 'Profil', icon: User },
+    { id: 'course' as TabType, label: t('tab_course'), icon: BookOpen },
+    { id: 'stats' as TabType, label: t('tab_stats'), icon: BarChart3 },
+    { id: 'submissions' as TabType, label: t('tab_submissions'), icon: Send, badge: pendingSubmissionsCount },
+    { id: 'profile' as TabType, label: t('tab_profile'), icon: User },
   ];
 
   return (

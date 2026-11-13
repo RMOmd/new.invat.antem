@@ -1,5 +1,6 @@
 import React from 'react';
 import { QuizQuestion } from '../types/course';
+import { useLanguage } from '../context/LanguageContext';
 import { CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 
 interface QuizRunnerProps {
@@ -15,14 +16,16 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   onSelectAnswer,
   checked
 }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="mt-6 pt-5 border-t border-slate-200 space-y-6">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-          <span>📝</span> Răspundeți la întrebări:
+          <span>📝</span> {t('quiz_title')}
         </h3>
         <span className="text-xs text-slate-500 font-medium">
-          {questions.length} întrebări
+          {t('quiz_questions_count', { count: questions.length })}
         </span>
       </div>
 

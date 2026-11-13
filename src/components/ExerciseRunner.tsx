@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, ActivityProgress } from '../types/course';
+import { useLanguage } from '../context/LanguageContext';
 import { AudioPlayer } from './AudioPlayer';
 import { DialogueReorder } from './DialogueReorder';
 import { QuizRunner } from './QuizRunner';
@@ -29,6 +30,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   hasPrev,
   hasNext
 }) => {
+  const { t } = useLanguage();
   const gaps = activity.gaps || [];
   const orderItems = activity.orderItems || [];
   const quizQuestions = activity.quizQuestions || [];
@@ -415,14 +417,14 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 mb-4 shadow-xs">
         <div className="flex items-center justify-between gap-2 mb-2">
           <span className="text-xs font-semibold px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md">
-            Lecția #{activity.id}
+            #{activity.id}
           </span>
           {checked && (
             <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
               (currentCorrect === currentTotal) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
             }`}>
               <Award className="w-3.5 h-3.5" />
-              Scor: {Math.round((currentCorrect / (currentTotal || 1)) * 100)}% ({currentCorrect}/{currentTotal} corecte)
+              {t('runner_score')}: {Math.round((currentCorrect / (currentTotal || 1)) * 100)}% ({t('runner_correct_count', { correct: currentCorrect, total: currentTotal })})
             </span>
           )}
         </div>
@@ -472,10 +474,10 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             <button
               type="button"
               onClick={() => setShowAllSolutions(!showAllSolutions)}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
             >
               {showAllSolutions ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              {showAllSolutions ? 'Ascunde răspunsurile' : 'Arată răspunsurile'}
+              {showAllSolutions ? t('runner_hide_answers') : t('runner_show_answers')}
             </button>
           )}
         </div>
@@ -544,7 +546,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         {showAllSolutions && (
           <div className="mt-6 pt-5 border-t border-slate-200 space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Răspunsuri corecte de referință:
+              {t('runner_correct_answers_title')}
             </h3>
             <div className="space-y-1.5">
               {quizQuestions.length > 0 ? (
@@ -574,7 +576,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
               ) : (
                 gaps.map((gap, idx) => (
                   <div key={gap.gapIndex} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs flex items-center justify-between gap-2">
-                    <span className="font-semibold text-slate-700">Spațiul #{idx + 1}:</span>
+                    <span className="font-semibold text-slate-700">{t('runner_gap_label', { num: idx + 1 })}</span>
                     <span className="font-mono font-bold text-emerald-800">{gap.correctAnswers.join(' / ')}</span>
                   </div>
                 ))
@@ -588,21 +590,21 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       {!isPlaylistType && (
         <div className={`rounded-2xl p-4 sm:p-6 mb-6 shadow-xs border transition-all ${
           isAssignmentType
-            ? 'bg-gradient-to-br from-amber-50/90 to-orange-50/90 border-amber-300 ring-1 ring-amber-200'
-            : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+            ? 'bg-linear-to-br from-amber-50/90 to-orange-50/90 border-amber-300 ring-1 ring-amber-200'
+            : 'bg-linear-to-r from-amber-50 to-orange-50 border-amber-200'
         }`}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm sm:text-base font-bold text-amber-950 flex items-center gap-2">
               <Send className="w-5 h-5 text-amber-600 shrink-0" />
-              {isAssignmentType ? 'Redactați și trimiteți tema profesorului' : 'Trimiteți tema / răspunsul scris profesorului'}
+              {isAssignmentType ? t('assign_teacher_title') : t('assign_student_title')}
             </h3>
             {!isAssignmentType && (
               <button
                 type="button"
                 onClick={() => setIsSubmitting(!isSubmitting)}
-                className="text-xs font-semibold text-amber-800 underline hover:text-amber-950"
+                className="text-xs font-semibold text-amber-800 underline hover:text-amber-950 cursor-pointer"
               >
-                {isSubmitting ? 'Anulează' : 'Scrie un răspuns'}
+                {isSubmitting ? t('assign_btn_cancel') : t('assign_btn_write')}
               </button>
             )}
           </div>
@@ -610,7 +612,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
           {submittedSuccess && (
             <div className="p-3.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-sm font-semibold flex items-center gap-2.5 my-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              Răspunsul dumneavoastră a fost trimis cu succes profesorului pentru verificare și notare!
+              {t('assign_success_msg')}
             </div>
           )}
 
@@ -621,24 +623,20 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
                 rows={isAssignmentType ? 6 : 4}
                 value={submissionText}
                 onChange={e => setSubmissionText(e.target.value)}
-                placeholder={
-                  isAssignmentType
-                    ? "Scrieți aici răspunsul dumneavoastră (de exemplu: Nume: Dan, Prenume: ..., etc.)..."
-                    : "Scrieți aici textul compunerii, dialogului sau întrebarea pentru profesor..."
-                }
+                placeholder={isAssignmentType ? t('assign_ph_structured') : t('assign_ph_standard')}
                 className="w-full text-base p-3.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3 shadow-inner"
                 required
               />
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs text-amber-800 font-medium">
-                  {submissionText.length} caractere
+                  {t('assign_chars_count', { count: submissionText.length })}
                 </span>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2"
+                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs text-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  Trimite pentru verificare
+                  {t('assign_btn_submit')}
                 </button>
               </div>
             </form>
@@ -654,8 +652,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
               <button
                 onClick={onPrev}
                 type="button"
-                className="p-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all"
-                title="Lecția anterioară"
+                className="p-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer"
+                title={t('runner_prev')}
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -666,8 +664,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
                 <button
                   onClick={handleReset}
                   type="button"
-                  className="p-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all"
-                  title="Resetează"
+                  className="p-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer"
+                  title={t('runner_reset')}
                 >
                   <RotateCcw className="w-5 h-5" />
                 </button>
@@ -676,23 +674,17 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
                 <button
                   onClick={handleHint}
                   type="button"
-                  className="px-2.5 sm:px-3 py-2 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 rounded-xl transition-all flex items-center gap-1 font-bold text-xs shrink-0"
-                  title={
-                    quizQuestions.length > 0
-                      ? 'Indiciu: alege răspunsul corect'
-                      : (matchingPairs.length > 0 || orderItems.length > 0)
-                      ? 'Indiciu: mută la locul corect'
-                      : 'Indiciu: dezvăluie următoarea literă'
-                  }
+                  className="px-2.5 sm:px-3 py-2 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 rounded-xl transition-all flex items-center gap-1 font-bold text-xs shrink-0 cursor-pointer"
+                  title={t('runner_hint')}
                 >
                   <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Indiciu</span>
+                  <span>{t('runner_hint')}</span>
                   <span className="hidden sm:inline">
                     {quizQuestions.length > 0
-                      ? ' (răspuns)'
+                      ? t('runner_hint_answer')
                       : (matchingPairs.length > 0 || orderItems.length > 0)
-                      ? ' (pas)'
-                      : ' (+1 literă)'}
+                      ? t('runner_hint_step')
+                      : t('runner_hint_letter')}
                   </span>
                 </button>
               </>
@@ -702,24 +694,24 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
           <button
             onClick={handleCheck}
             type="button"
-            className="flex-1 max-w-xs py-3 px-5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold rounded-xl shadow-md text-sm sm:text-base transition-all flex items-center justify-center gap-2"
+            className="flex-1 max-w-xs py-3 px-5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold rounded-xl shadow-md text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <CheckCircle2 className="w-5 h-5" />
             {isPlaylistType
-              ? (checked ? 'Audiat și finalizat ✓' : 'Marchează ca audiat')
+              ? (checked ? t('runner_listened_done') : t('runner_mark_listened'))
               : isAssignmentType
-              ? (submittedSuccess ? 'Trimis profesorului ✓' : 'Trimite tema')
+              ? (submittedSuccess ? t('runner_submitted_done') : t('runner_submit_assignment'))
               : hasInteractiveTask
-              ? (checked ? 'Re-verifică' : 'Verifică')
-              : 'Marchează ca citit'}
+              ? (checked ? t('runner_recheck') : t('runner_check'))
+              : t('runner_mark_read')}
           </button>
 
           {hasNext && (
             <button
               onClick={onNext}
               type="button"
-              className="p-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all"
-              title="Lecția următoare"
+              className="p-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer"
+              title={t('runner_next')}
             >
               <ArrowRight className="w-5 h-5" />
             </button>

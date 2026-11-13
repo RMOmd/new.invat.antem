@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { ArrowUp, ArrowDown, CheckCircle2, XCircle } from 'lucide-react';
 
 interface DialogueReorderProps {
@@ -19,6 +20,7 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
   onCheckStateChange,
   hintTrigger
 }) => {
+  const { t } = useLanguage();
   // Initialize items with unique original indices to prevent duplicate React keys
   const [items, setItems] = useState<OrderItem[]>(() => {
     const list: OrderItem[] = orderItems.map((text, origIdx) => ({ origIdx, text }));
@@ -98,10 +100,10 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
     <div className="mt-6 pt-5 border-t border-slate-200">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <span>🧩</span> Aranjați replicile în ordinea corectă a dialogului:
+          <span>🧩</span> {t('dialogue_title')}
         </h3>
         <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-          (folosiți săgețile ▲ ▼ pentru a muta replicile)
+          {t('dialogue_hint_text')}
         </span>
       </div>
 

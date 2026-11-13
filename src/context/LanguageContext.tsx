@@ -1,0 +1,557 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+export type Language = 'ro' | 'ru' | 'en';
+
+export interface LanguageContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string, params?: Record<string, string | number | undefined>) => string;
+}
+
+const LOCAL_LANG_KEY = 'antem_interface_lang';
+
+export const translations: Record<Language, Record<string, string>> = {
+  ro: {
+    // Top Bar & Navigation
+    course_level_badge: 'Nivelul A1+ • Antem',
+    course_title_ro: 'Limba Română',
+    nav_course: 'Curs & Lecții',
+    nav_stats: 'Statistici & Progres',
+    nav_submissions: 'Verificare teme',
+    tab_course: 'Curs',
+    tab_stats: 'Statistici',
+    tab_submissions: 'Teme',
+    tab_profile: 'Profil',
+    btn_back_to_units: 'Înapoi la lista unităților',
+    btn_logout: 'Deconectare',
+    btn_logout_from: 'Ieșire din cont',
+    btn_close: 'Închide',
+    btn_save_reload: 'Salvează și reîncarcă',
+    role_student: 'Student',
+    role_teacher: 'Profesor',
+
+    // Modals
+    user_modal_title: 'Conturi de utilizator (Profiluri)',
+    user_modal_desc: 'Selectați un profil existent sau creați un cont nou pentru a păstra progresul individual.',
+    user_modal_add_title: 'Adaugă un utilizator nou:',
+    user_modal_name_ph: 'Nume Prenume (ex: Ion Ceban)',
+    user_modal_email_ph: 'Email (ex: ion@exemplu.md)',
+    user_modal_btn_create: 'Crează profil',
+    sb_modal_title: 'Sincronizare Cloud Supabase',
+    sb_modal_desc: 'Pentru a sincroniza progresul între dispozitive și pe GitHub Pages, introduceți cheile proiectului dumneavoastră gratuit Supabase.',
+    sb_modal_note: 'Dacă nu introduceți cheile Supabase, aplicația funcționează perfect în mod local (salvează progresul fiecărui student în memoria browserului).',
+
+    // Auth View
+    auth_badge: 'ANTEM Moldova • Curs A1+',
+    auth_title: 'Învățăm Limba Română',
+    auth_subtitle: 'Program de instruire lingvistică pentru alolingvi. Autentificați-vă pentru a accesa unitățile și a salva progresul.',
+    auth_tab_login: 'Autentificare',
+    auth_tab_register: 'Înregistrare',
+    auth_email_label: 'Adresă de e-mail:',
+    auth_email_ph: 'student@exemplu.com',
+    auth_pass_label: 'Parolă:',
+    auth_pass_ph: 'Introduceți parola...',
+    auth_pass_demo_hint: '(demo: password123)',
+    auth_remember_me: 'Ține-mă minte pe acest dispozitiv',
+    auth_btn_login: 'Intră în cont',
+    auth_btn_checking: 'Se verifică...',
+    auth_quick_demo_title: 'Conturi demo pentru acces rapid:',
+    auth_name_label: 'Nume și Prenume:',
+    auth_name_ph: 'ex. Ion Creangă',
+    auth_confirm_pass_label: 'Confirmare:',
+    auth_confirm_pass_ph: 'Repetați parola',
+    auth_pass_min_hint: 'Min. 6 caractere',
+    auth_show_pass: 'Afișează parola',
+    auth_hide_pass: 'Ascunde parola',
+    auth_account_type_label: 'Tipul contului:',
+    auth_student_desc: 'Cursant (rezolvă exerciții și teste)',
+    auth_teacher_desc: 'Evaluator (verificare teme & note)',
+    auth_btn_register: 'Creează cont și începe',
+    auth_btn_creating: 'Se creează contul...',
+    auth_footer_units: '20 Unități A1+',
+    auth_footer_auto_save: 'Progres salvat automat',
+    auth_footer_copyright: '© ANTEM • Asociația Națională a Trainerilor Europeni din Moldova.',
+    auth_err_required_fields: 'Vă rugăm să completați ambele câmpuri (e-mail și parolă).',
+    auth_err_invalid_email: 'Introduceți o adresă de e-mail validă.',
+    auth_err_short_pass: 'Parola trebuie să conțină cel puțin 6 caractere.',
+    auth_err_pass_mismatch: 'Parolele introduse nu coincid.',
+    auth_success_registered: 'Contul a fost creat cu succes! Se încarcă cursul...',
+
+    // Course View
+    course_banner_title: 'Curs Interactiv de Limba Română',
+    course_banner_desc: '20 de unități tematice, dialoguri autentice, gramatică practică și peste 400 de exerciții interactive.',
+    course_search_ph: 'Căutați lecții, vocabular, dialoguri sau gramatică...',
+    course_search_clear: 'Șterge',
+    course_units_count: '{count} unități',
+    course_completed_stat: '{completed}/{total} finalizate',
+    course_no_search_results: 'Nu am găsit nicio activitate care să corespundă căutării "{query}".',
+    course_btn_open: 'Deschide',
+    course_status_completed: 'Finalizat',
+    course_status_inprogress: 'În lucru',
+    course_type_audio: 'Audio / Dialog',
+    course_type_quiz: 'Test / Grilă',
+    course_type_gap: 'Completare spații',
+    course_type_dialogue: 'Ordonare dialog',
+    course_type_matching: 'Potrivire perechi',
+    course_type_assignment: 'Temă scrisă',
+    course_type_reading: 'Text / Lectură',
+
+    // Exercise Runner & Bottom Action Bar
+    runner_prev: 'Lecția anterioară',
+    runner_next: 'Lecția următoare',
+    runner_reset: 'Resetează',
+    runner_hint: 'Indiciu',
+    runner_hint_answer: ' (răspuns)',
+    runner_hint_step: ' (pas)',
+    runner_hint_letter: ' (+1 literă)',
+    runner_check: 'Verifică',
+    runner_recheck: 'Re-verifică',
+    runner_mark_read: 'Marchează ca citit',
+    runner_mark_listened: 'Marchează ca audiat',
+    runner_listened_done: 'Audiat și finalizat ✓',
+    runner_submit_assignment: 'Trimite tema',
+    runner_submitted_done: 'Trimis profesorului ✓',
+    runner_score: 'Scor',
+    runner_correct_count: '{correct} din {total} corecte',
+    runner_completed_badge: 'Finalizat ✓',
+    runner_perfect_score: 'Bravo! Rezultat excelent! Toate răspunsurile sunt corecte.',
+    runner_good_score: 'Rezultat bun, dar mai sunt mici greșeli.',
+    runner_low_score: 'Mai încercați o dată pentru a îmbunătăți rezultatul.',
+    runner_show_answers: 'Arată răspunsurile corecte',
+    runner_hide_answers: 'Ascunde răspunsurile',
+    runner_correct_answers_title: 'Răspunsuri corecte:',
+    runner_gap_label: 'Spațiul #{num}:',
+
+    // Assignment Block
+    assign_student_title: 'Trimiteți tema / răspunsul scris profesorului',
+    assign_teacher_title: 'Redactați și trimiteți tema profesorului',
+    assign_btn_write: 'Scrie un răspuns',
+    assign_btn_cancel: 'Anulează',
+    assign_btn_submit: 'Trimite pentru verificare',
+    assign_success_msg: 'Răspunsul dumneavoastră a fost trimis cu succes profesorului pentru verificare și notare!',
+    assign_chars_count: '{count} caractere',
+    assign_ph_standard: 'Scrieți aici textul compunerii, dialogului sau întrebarea pentru profesor...',
+    assign_ph_structured: 'Scrieți aici răspunsul dumneavoastră (de exemplu: Nume: Dan, Prenume: ..., etc.)...',
+
+    // Specialized Runners (Quiz, Dialogue, Matching, Audio)
+    quiz_title: 'Răspundeți la întrebări:',
+    quiz_questions_count: '{count} întrebări',
+    dialogue_title: 'Aranjați replicile în ordinea corectă a dialogului:',
+    dialogue_hint_text: '(folosiți săgețile ▲ ▼ pentru a muta replicile)',
+    matching_title: 'Potriviți fiecare element din stânga cu cel din dreapta:',
+    matching_hint_text: '(folosiți săgețile ▲ ▼ sau alegeți răspunsul)',
+    btn_move_up: 'Mută mai sus',
+    btn_move_down: 'Mută mai jos',
+    audio_now_playing: 'În redare (#{current}/{total})',
+    audio_filter_all: 'Toate',
+
+    // Stats View
+    stats_header_title: 'Statistica progresului',
+    stats_header_subtitle: 'Urmăriți-vă rezultatele învățării limbii române și lucrați asupra greșelilor.',
+    stats_kpi_completed: 'Finalizate',
+    stats_kpi_of_course: 'din curs',
+    stats_kpi_avg_score: 'Scor mediu',
+    stats_kpi_accuracy: 'precizie răspunsuri',
+    stats_kpi_correct_answers: 'Răspunsuri corecte',
+    stats_kpi_gaps_filled: 'spații completate',
+    stats_kpi_current_level: 'Nivel curent',
+    stats_weak_title: 'Exerciții ce necesită repetare (scor sub 80%)',
+    stats_weak_empty: 'Felicitări! Nu aveți exerciții cu scor scăzut.',
+    stats_all_title: 'Istoricul tuturor activităților completate',
+    stats_btn_repeat: 'Reia exercițiul',
+
+    // Submissions View
+    subs_teacher_title: 'Verificarea temelor (Panoul Profesorului)',
+    subs_student_title: 'Temele mele trimise spre verificare',
+    subs_teacher_desc: 'Aici puteți citi răspunsurile scrise ale tuturor studenților, acorda note și lăsa comentarii.',
+    subs_student_desc: 'Aici vedeți stadiul lucrărilor trimise, nota acordată și comentariile profesorului.',
+    subs_empty_title: 'Nu există teme trimise încă',
+    subs_empty_desc: 'Pentru a trimite o compunere sau un dialog la verificare, deschideți orice exercițiu din curs și folosiți blocul «Trimiteți tema profesorului».',
+    subs_status_pending: 'În așteptare',
+    subs_status_reviewed: 'Verificat',
+    subs_grade_label: 'Nota:',
+    subs_feedback_label: 'Comentariul profesorului:',
+    subs_btn_grade: 'Evaluează lucrarea',
+    subs_btn_save_grade: 'Salvează nota și comentariul',
+    subs_grade_ph: 'Introduceți nota (1-10)',
+    subs_feedback_ph: 'Scrieți feedback-ul și recomandările pentru student...'
+  },
+
+  ru: {
+    // Top Bar & Navigation
+    course_level_badge: 'Уровень A1+ • Antem',
+    course_title_ro: 'Limba Română',
+    nav_course: 'Курс и уроки',
+    nav_stats: 'Статистика и прогресс',
+    nav_submissions: 'Проверка заданий',
+    tab_course: 'Курс',
+    tab_stats: 'Статистика',
+    tab_submissions: 'Задания',
+    tab_profile: 'Профиль',
+    btn_back_to_units: 'Назад к списку юнитов',
+    btn_logout: 'Выйти',
+    btn_logout_from: 'Выйти из аккаунта',
+    btn_close: 'Закрыть',
+    btn_save_reload: 'Сохранить и перезагрузить',
+    role_student: 'Студент',
+    role_teacher: 'Преподаватель',
+
+    // Modals
+    user_modal_title: 'Профили пользователей',
+    user_modal_desc: 'Выберите существующий профиль или создайте новый для раздельного сохранения прогресса.',
+    user_modal_add_title: 'Добавить нового пользователя:',
+    user_modal_name_ph: 'Имя и Фамилия (напр.: Иван Чебан)',
+    user_modal_email_ph: 'Email (напр.: ivan@example.md)',
+    user_modal_btn_create: 'Создать профиль',
+    sb_modal_title: 'Облачная синхронизация Supabase',
+    sb_modal_desc: 'Для синхронизации прогресса между устройствами и на GitHub Pages введите ключи вашего бесплатного проекта Supabase.',
+    sb_modal_note: 'Если ключи не введены, приложение работает полностью автономно в браузере (сохраняет прогресс каждого студента локально).',
+
+    // Auth View
+    auth_badge: 'ANTEM Молдова • Курс A1+',
+    auth_title: 'Învățăm Limba Română',
+    auth_subtitle: 'Программа языкового обучения для иноязычных. Войдите, чтобы получить доступ к урокам и сохранять свой прогресс.',
+    auth_tab_login: 'Авторизация',
+    auth_tab_register: 'Регистрация',
+    auth_email_label: 'Электронная почта:',
+    auth_email_ph: 'student@example.com',
+    auth_pass_label: 'Пароль:',
+    auth_pass_ph: 'Введите пароль...',
+    auth_pass_demo_hint: '(демо: password123)',
+    auth_remember_me: 'Запомнить меня на этом устройстве',
+    auth_btn_login: 'Войти в аккаунт',
+    auth_btn_checking: 'Проверка...',
+    auth_quick_demo_title: 'Демо-аккаунты для быстрого входа:',
+    auth_name_label: 'Имя и Фамилия:',
+    auth_name_ph: 'напр.: Ион Крянгэ',
+    auth_confirm_pass_label: 'Подтверждение:',
+    auth_confirm_pass_ph: 'Повторите пароль',
+    auth_pass_min_hint: 'Мин. 6 символов',
+    auth_show_pass: 'Показать пароль',
+    auth_hide_pass: 'Скрыть пароль',
+    auth_account_type_label: 'Тип аккаунта:',
+    auth_student_desc: 'Студент (выполняет упражнения и тесты)',
+    auth_teacher_desc: 'Преподаватель (проверка работ и оценки)',
+    auth_btn_register: 'Создать аккаунт и начать',
+    auth_btn_creating: 'Создание аккаунта...',
+    auth_footer_units: '20 тематических юнитов A1+',
+    auth_footer_auto_save: 'Прогресс сохраняется автоматически',
+    auth_footer_copyright: '© ANTEM • Национальная ассоциация европейских тренеров Молдовы.',
+    auth_err_required_fields: 'Пожалуйста, заполните оба поля (e-mail и пароль).',
+    auth_err_invalid_email: 'Введите корректный адрес электронной почты.',
+    auth_err_short_pass: 'Пароль должен содержать не менее 6 символов.',
+    auth_err_pass_mismatch: 'Введённые пароли не совпадают.',
+    auth_success_registered: 'Аккаунт успешно создан! Загрузка курса...',
+
+    // Course View
+    course_banner_title: 'Интерактивный курс румынского языка',
+    course_banner_desc: '20 тематических разделов, живые диалоги, практическая грамматика и более 400 интерактивных заданий.',
+    course_search_ph: 'Поиск уроков, лексики, диалогов или грамматики...',
+    course_search_clear: 'Очистить',
+    course_units_count: '{count} юнитов',
+    course_completed_stat: '{completed}/{total} выполнено',
+    course_no_search_results: 'Не найдено уроков по запросу "{query}".',
+    course_btn_open: 'Открыть',
+    course_status_completed: 'Выполнено',
+    course_status_inprogress: 'В процессе',
+    course_type_audio: 'Аудио / Диалог',
+    course_type_quiz: 'Тест с выбором ответа',
+    course_type_gap: 'Заполнение пропусков',
+    course_type_dialogue: 'Сборка диалога',
+    course_type_matching: 'Сопоставление пар',
+    course_type_assignment: 'Письменное задание',
+    course_type_reading: 'Текст / Чтение',
+
+    // Exercise Runner & Bottom Action Bar
+    runner_prev: 'Предыдущий урок',
+    runner_next: 'Следующий урок',
+    runner_reset: 'Сбросить',
+    runner_hint: 'Подсказка',
+    runner_hint_answer: ' (ответ)',
+    runner_hint_step: ' (шаг)',
+    runner_hint_letter: ' (+1 буква)',
+    runner_check: 'Проверить',
+    runner_recheck: 'Проверить снова',
+    runner_mark_read: 'Отметить как прочитанное',
+    runner_mark_listened: 'Отметить как прослушанное',
+    runner_listened_done: 'Прослушано и завершено ✓',
+    runner_submit_assignment: 'Отправить задание',
+    runner_submitted_done: 'Отправлено преподавателю ✓',
+    runner_score: 'Балл',
+    runner_correct_count: '{correct} из {total} верно',
+    runner_completed_badge: 'Выполнено ✓',
+    runner_perfect_score: 'Отлично! Все ответы абсолютно верны!',
+    runner_good_score: 'Хороший результат, но есть небольшие неточности.',
+    runner_low_score: 'Попробуйте ещё раз, чтобы улучшить балл.',
+    runner_show_answers: 'Показать правильные ответы',
+    runner_hide_answers: 'Скрыть ответы',
+    runner_correct_answers_title: 'Правильные ответы:',
+    runner_gap_label: 'Пропуск #{num}:',
+
+    // Assignment Block
+    assign_student_title: 'Отправить задание / письменный ответ преподавателю',
+    assign_teacher_title: 'Составьте и отправьте задание преподавателю',
+    assign_btn_write: 'Написать ответ',
+    assign_btn_cancel: 'Отмена',
+    assign_btn_submit: 'Отправить на проверку',
+    assign_success_msg: 'Ваш ответ успешно отправлен преподавателю на проверку и оценивание!',
+    assign_chars_count: '{count} символов',
+    assign_ph_standard: 'Напишите здесь текст сочинения, диалога или вопрос преподавателю...',
+    assign_ph_structured: 'Напишите здесь ваш ответ (например: Nume: Dan, Prenume: ..., и т.д.)...',
+
+    // Specialized Runners (Quiz, Dialogue, Matching, Audio)
+    quiz_title: 'Ответьте на вопросы:',
+    quiz_questions_count: '{count} вопросов',
+    dialogue_title: 'Расставьте реплики в правильном порядке диалога:',
+    dialogue_hint_text: '(используйте стрелки ▲ ▼ для перемещения реплик)',
+    matching_title: 'Сопоставьте каждый элемент слева с элементом справа:',
+    matching_hint_text: '(используйте стрелки ▲ ▼ или выберите ответ)',
+    btn_move_up: 'Переместить выше',
+    btn_move_down: 'Переместить ниже',
+    audio_now_playing: 'Воспроизведение (#{current}/{total})',
+    audio_filter_all: 'Все',
+
+    // Stats View
+    stats_header_title: 'Статистика прогресса',
+    stats_header_subtitle: 'Следите за своими результатами в изучении румынского языка и работайте над ошибками.',
+    stats_kpi_completed: 'Завершено',
+    stats_kpi_of_course: 'курса',
+    stats_kpi_avg_score: 'Средний балл',
+    stats_kpi_accuracy: 'точность ответов',
+    stats_kpi_correct_answers: 'Правильные ответы',
+    stats_kpi_gaps_filled: 'заполненных пропусков',
+    stats_kpi_current_level: 'Текущий уровень',
+    stats_weak_title: 'Упражнения для повторения (балл ниже 80%)',
+    stats_weak_empty: 'Поздравляем! У вас нет упражнений с низким баллом.',
+    stats_all_title: 'История всех завершённых заданий',
+    stats_btn_repeat: 'Повторить упражнение',
+
+    // Submissions View
+    subs_teacher_title: 'Проверка заданий (Панель преподавателя)',
+    subs_student_title: 'Мои задания, отправленные на проверку',
+    subs_teacher_desc: 'Здесь вы можете читать письменные ответы студентов, выставлять оценки и оставлять комментарии.',
+    subs_student_desc: 'Здесь вы видите статус отправленных работ, выставленную оценку и отзывы преподавателя.',
+    subs_empty_title: 'Пока нет отправленных заданий',
+    subs_empty_desc: 'Чтобы отправить сочинение или диалог на проверку, откройте любое задание курса и отправьте письменный ответ.',
+    subs_status_pending: 'На проверке',
+    subs_status_reviewed: 'Проверено',
+    subs_grade_label: 'Оценка:',
+    subs_feedback_label: 'Комментарий преподавателя:',
+    subs_btn_grade: 'Оценить работу',
+    subs_btn_save_grade: 'Сохранить оценку и комментарий',
+    subs_grade_ph: 'Введите оценку (1-10)',
+    subs_feedback_ph: 'Напишите комментарий и рекомендации для студента...'
+  },
+
+  en: {
+    // Top Bar & Navigation
+    course_level_badge: 'Level A1+ • Antem',
+    course_title_ro: 'Limba Română',
+    nav_course: 'Course & Lessons',
+    nav_stats: 'Stats & Progress',
+    nav_submissions: 'Assignment Review',
+    tab_course: 'Course',
+    tab_stats: 'Stats',
+    tab_submissions: 'Assignments',
+    tab_profile: 'Profile',
+    btn_back_to_units: 'Back to unit list',
+    btn_logout: 'Log out',
+    btn_logout_from: 'Log out from account',
+    btn_close: 'Close',
+    btn_save_reload: 'Save & reload',
+    role_student: 'Student',
+    role_teacher: 'Teacher',
+
+    // Modals
+    user_modal_title: 'User Profiles',
+    user_modal_desc: 'Select an existing profile or create a new one to save progress independently.',
+    user_modal_add_title: 'Add a new user:',
+    user_modal_name_ph: 'Full Name (e.g. John Doe)',
+    user_modal_email_ph: 'Email (e.g. john@example.com)',
+    user_modal_btn_create: 'Create profile',
+    sb_modal_title: 'Supabase Cloud Sync',
+    sb_modal_desc: 'To sync progress across devices and GitHub Pages, enter your free Supabase project credentials.',
+    sb_modal_note: 'Without Supabase credentials, the app runs completely offline in your browser, storing progress locally.',
+
+    // Auth View
+    auth_badge: 'ANTEM Moldova • Course A1+',
+    auth_title: 'Învățăm Limba Română',
+    auth_subtitle: 'Romanian language training program for non-native speakers. Sign in to access course units and save progress.',
+    auth_tab_login: 'Sign In',
+    auth_tab_register: 'Sign Up',
+    auth_email_label: 'Email address:',
+    auth_email_ph: 'student@example.com',
+    auth_pass_label: 'Password:',
+    auth_pass_ph: 'Enter password...',
+    auth_pass_demo_hint: '(demo: password123)',
+    auth_remember_me: 'Remember me on this device',
+    auth_btn_login: 'Sign in to account',
+    auth_btn_checking: 'Checking...',
+    auth_quick_demo_title: 'Quick access demo accounts:',
+    auth_name_label: 'Full Name:',
+    auth_name_ph: 'e.g. Ion Creangă',
+    auth_confirm_pass_label: 'Confirmation:',
+    auth_confirm_pass_ph: 'Repeat password',
+    auth_pass_min_hint: 'Min. 6 characters',
+    auth_show_pass: 'Show password',
+    auth_hide_pass: 'Hide password',
+    auth_account_type_label: 'Account type:',
+    auth_student_desc: 'Student (solves exercises and tests)',
+    auth_teacher_desc: 'Teacher (reviews assignments & grades)',
+    auth_btn_register: 'Create account and start',
+    auth_btn_creating: 'Creating account...',
+    auth_footer_units: '20 Thematic Units A1+',
+    auth_footer_auto_save: 'Progress saved automatically',
+    auth_footer_copyright: '© ANTEM • National Association of European Trainers from Moldova.',
+    auth_err_required_fields: 'Please fill in both fields (email and password).',
+    auth_err_invalid_email: 'Please enter a valid email address.',
+    auth_err_short_pass: 'Password must be at least 6 characters.',
+    auth_err_pass_mismatch: 'Passwords do not match.',
+    auth_success_registered: 'Account created successfully! Loading course...',
+
+    // Course View
+    course_banner_title: 'Interactive Romanian Language Course',
+    course_banner_desc: '20 thematic units, authentic dialogues, practical grammar, and over 400 interactive exercises.',
+    course_search_ph: 'Search lessons, vocabulary, dialogues, or grammar...',
+    course_search_clear: 'Clear',
+    course_units_count: '{count} units',
+    course_completed_stat: '{completed}/{total} completed',
+    course_no_search_results: 'No activities found matching "{query}".',
+    course_btn_open: 'Open',
+    course_status_completed: 'Completed',
+    course_status_inprogress: 'In progress',
+    course_type_audio: 'Audio / Dialogue',
+    course_type_quiz: 'Quiz / Multiple Choice',
+    course_type_gap: 'Gap Fill',
+    course_type_dialogue: 'Dialogue Reorder',
+    course_type_matching: 'Pair Matching',
+    course_type_assignment: 'Written Assignment',
+    course_type_reading: 'Reading Text',
+
+    // Exercise Runner & Bottom Action Bar
+    runner_prev: 'Previous lesson',
+    runner_next: 'Next lesson',
+    runner_reset: 'Reset',
+    runner_hint: 'Hint',
+    runner_hint_answer: ' (answer)',
+    runner_hint_step: ' (step)',
+    runner_hint_letter: ' (+1 letter)',
+    runner_check: 'Check',
+    runner_recheck: 'Re-check',
+    runner_mark_read: 'Mark as read',
+    runner_mark_listened: 'Mark as listened',
+    runner_listened_done: 'Listened and finished ✓',
+    runner_submit_assignment: 'Submit assignment',
+    runner_submitted_done: 'Submitted to teacher ✓',
+    runner_score: 'Score',
+    runner_correct_count: '{correct} of {total} correct',
+    runner_completed_badge: 'Completed ✓',
+    runner_perfect_score: 'Excellent! All answers are completely correct!',
+    runner_good_score: 'Good job, but there are some small mistakes.',
+    runner_low_score: 'Try again to improve your score.',
+    runner_show_answers: 'Show correct answers',
+    runner_hide_answers: 'Hide answers',
+    runner_correct_answers_title: 'Correct answers:',
+    runner_gap_label: 'Gap #{num}:',
+
+    // Assignment Block
+    assign_student_title: 'Submit assignment / written response to teacher',
+    assign_teacher_title: 'Compose and submit assignment to teacher',
+    assign_btn_write: 'Write a response',
+    assign_btn_cancel: 'Cancel',
+    assign_btn_submit: 'Submit for review',
+    assign_success_msg: 'Your response was successfully submitted to the teacher for review and grading!',
+    assign_chars_count: '{count} characters',
+    assign_ph_standard: 'Write your essay, dialogue, or question for the teacher here...',
+    assign_ph_structured: 'Write your answer here (e.g. Name: Dan, Surname: ..., etc.)...',
+
+    // Specialized Runners (Quiz, Dialogue, Matching, Audio)
+    quiz_title: 'Answer the questions:',
+    quiz_questions_count: '{count} questions',
+    dialogue_title: 'Arrange the dialogue lines in correct order:',
+    dialogue_hint_text: '(use the ▲ ▼ arrows to move lines)',
+    matching_title: 'Match each item on the left with the item on the right:',
+    matching_hint_text: '(use the ▲ ▼ arrows or select an answer)',
+    btn_move_up: 'Move up',
+    btn_move_down: 'Move down',
+    audio_now_playing: 'Playing (#{current}/{total})',
+    audio_filter_all: 'All',
+
+    // Stats View
+    stats_header_title: 'Progress Statistics',
+    stats_header_subtitle: 'Track your Romanian language learning results and work on your mistakes.',
+    stats_kpi_completed: 'Completed',
+    stats_kpi_of_course: 'of course',
+    stats_kpi_avg_score: 'Average score',
+    stats_kpi_accuracy: 'answer accuracy',
+    stats_kpi_correct_answers: 'Correct answers',
+    stats_kpi_gaps_filled: 'gaps completed',
+    stats_kpi_current_level: 'Current level',
+    stats_weak_title: 'Exercises to review (score below 80%)',
+    stats_weak_empty: 'Congratulations! You have no exercises with low scores.',
+    stats_all_title: 'History of all completed activities',
+    stats_btn_repeat: 'Retake exercise',
+
+    // Submissions View
+    subs_teacher_title: 'Assignment Review (Teacher Panel)',
+    subs_student_title: 'My Submitted Assignments',
+    subs_teacher_desc: 'Here you can review written submissions from students, assign grades, and leave feedback.',
+    subs_student_desc: 'Here you can see the status of your submitted work, assigned grades, and teacher feedback.',
+    subs_empty_title: 'No assignments submitted yet',
+    subs_empty_desc: 'To submit an essay or dialogue for review, open any exercise and use the «Submit assignment to teacher» block.',
+    subs_status_pending: 'Pending',
+    subs_status_reviewed: 'Reviewed',
+    subs_grade_label: 'Grade:',
+    subs_feedback_label: 'Teacher feedback:',
+    subs_btn_grade: 'Grade submission',
+    subs_btn_save_grade: 'Save grade & feedback',
+    subs_grade_ph: 'Enter grade (1-10)',
+    subs_feedback_ph: 'Write feedback and recommendations for the student...'
+  }
+};
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_LANG_KEY);
+      if (saved === 'ro' || saved === 'ru' || saved === 'en') {
+        return saved;
+      }
+    } catch {}
+    return 'ro';
+  });
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    try {
+      localStorage.setItem(LOCAL_LANG_KEY, lang);
+    } catch {}
+  };
+
+  const t = (key: string, params?: Record<string, string | number | undefined>): string => {
+    const langDict = translations[language] || translations.ro;
+    let text = langDict[key] || translations.ro[key] || key;
+
+    if (params) {
+      Object.entries(params).forEach(([paramKey, paramVal]) => {
+        text = text.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramVal));
+      });
+    }
+
+    return text;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+
+export const useLanguage = () => {
+  const ctx = useContext(LanguageContext);
+  if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
+  return ctx;
+};

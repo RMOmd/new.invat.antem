@@ -7,6 +7,8 @@ export interface UserProfile {
   email: string;
   name: string;
   role: 'student' | 'teacher';
+  password?: string;
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -15,7 +17,9 @@ interface AuthContextType {
   allProgress: Record<string, ActivityProgress>;
   allSubmissions: AssignmentSubmission[];
   loginAs: (user: UserProfile) => void;
-  createNewUser: (name: string, email: string, role: 'student' | 'teacher') => UserProfile;
+  loginWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  registerWithCredentials: (name: string, email: string, password: string, role: 'student' | 'teacher') => Promise<{ success: boolean; error?: string }>;
+  createNewUser: (name: string, email: string, role: 'student' | 'teacher', password?: string) => UserProfile;
   logout: () => void;
   saveProgress: (progress: ActivityProgress) => Promise<void>;
   submitAssignment: (activityId: string, activityTitle: string, text: string) => Promise<void>;
@@ -28,28 +32,37 @@ const LOCAL_USERS_KEY = 'romanian_platform_users';
 const LOCAL_CURRENT_USER_KEY = 'romanian_platform_current_user';
 const LOCAL_SUBMISSIONS_KEY = 'romanian_platform_submissions';
 
+const INITIAL_DEMO_USERS: UserProfile[] = [
+  { id: 'usr-student-1', name: 'Danila Student', email: 'danila@example.com', role: 'student', password: 'password123', createdAt: '2026-01-01' },
+  { id: 'usr-student-2', name: 'Elena Cojocaru', email: 'elena@example.com', role: 'student', password: 'password123', createdAt: '2026-01-01' },
+  { id: 'usr-teacher', name: 'Profesor ANTEM', email: 'teacher@antem.org', role: 'teacher', password: 'password123', createdAt: '2026-01-01' }
+];
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [usersList, setUsersList] = useState<UserProfile[]>(() => {
     const saved = localStorage.getItem(LOCAL_USERS_KEY);
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Ensure every user has a default password if missing
+          return parsed.map(u => ({ ...u, password: u.password || 'password123' }));
+        }
+      } catch (e) {}
     }
-    // Default demo users (1 student, 1 teacher)
-    const initial: UserProfile[] = [
-      { id: 'usr-student-1', name: 'Student Danila', email: 'danila@example.com', role: 'student' },
-      { id: 'usr-student-2', name: 'Student Elena', email: 'elena@example.com', role: 'student' },
-      { id: 'usr-teacher', name: 'Profesor (Teacher)', email: 'teacher@antem.org', role: 'teacher' }
-    ];
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(initial));
-    return initial;
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(INITIAL_DEMO_USERS));
+    return INITIAL_DEMO_USERS;
   });
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem(LOCAL_CURRENT_USER_KEY);
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
     }
-    return usersList[0] || null;
+    // GATED ACCESS: No automatic login on first visit!
+    return null;
   });
 
   const [allProgress, setAllProgress] = useState<Record<string, ActivityProgress>>({});
@@ -113,12 +126,130 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(user));
   };
 
-  const createNewUser = (name: string, email: string, role: 'student' | 'teacher'): UserProfile => {
+  const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
+    // 1. Check Supabase Auth if connected
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: cleanPass
+        });
+        if (!error && data.user) {
+          const profile: UserProfile = {
+            id: data.user.id,
+            email: data.user.email || cleanEmail,
+            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilizator',
+            role: data.user.user_metadata?.role === 'teacher' ? 'teacher' : 'student',
+            password: cleanPass
+          };
+          loginAs(profile);
+          return { success: true };
+        }
+      } catch (err) {
+        console.warn('Supabase auth failed, falling back to local credentials', err);
+      }
+    }
+
+    // 2. Check local users database
+    const matched = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+    if (!matched) {
+      return {
+        success: false,
+        error: 'Nu există niciun cont înregistrat cu acest e-mail. Vă rugăm să vă înregistrați.'
+      };
+    }
+
+    if (matched.password && matched.password !== cleanPass) {
+      return {
+        success: false,
+        error: 'Parolă incorectă. Vă rugăm să verificați datele introduse.'
+      };
+    }
+
+    loginAs(matched);
+    return { success: true };
+  };
+
+  const registerWithCredentials = async (
+    name: string,
+    email: string,
+    pass: string,
+    role: 'student' | 'teacher'
+  ): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+    const cleanPass = pass.trim();
+
+    if (!cleanName) return { success: false, error: 'Introduceți numele și prenumele.' };
+    if (!cleanEmail || !cleanEmail.includes('@')) return { success: false, error: 'Introduceți o adresă de e-mail validă.' };
+    if (cleanPass.length < 6) return { success: false, error: 'Parola trebuie să conțină cel puțin 6 caractere.' };
+
+    // Check if email is already registered locally
+    const existing = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      return {
+        success: false,
+        error: 'Un cont cu această adresă de e-mail există deja. Autentificați-vă.'
+      };
+    }
+
+    let userId = `usr-${Date.now()}`;
+
+    // Register in Supabase if connected
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: cleanPass,
+          options: {
+            data: { name: cleanName, role }
+          }
+        });
+        if (error) {
+          console.warn('Supabase signup notice:', error.message);
+        } else if (data.user) {
+          userId = data.user.id;
+        }
+      } catch (err) {
+        console.warn('Supabase signup error fallback:', err);
+      }
+    }
+
+    const newUser: UserProfile = {
+      id: userId,
+      name: cleanName,
+      email: cleanEmail,
+      role,
+      password: cleanPass,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...usersList, newUser];
+    setUsersList(updated);
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+    loginAs(newUser);
+
+    return { success: true };
+  };
+
+  const createNewUser = (
+    name: string,
+    email: string,
+    role: 'student' | 'teacher',
+    password = 'password123'
+  ): UserProfile => {
     const newUser: UserProfile = {
       id: `usr-${Date.now()}`,
-      name,
-      email,
-      role
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      role,
+      password,
+      createdAt: new Date().toISOString()
     };
     const updated = [...usersList, newUser];
     setUsersList(updated);
@@ -130,6 +261,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem(LOCAL_CURRENT_USER_KEY);
+    const supabase = getSupabase();
+    if (supabase) {
+      supabase.auth.signOut().catch(() => {});
+    }
   };
 
   const saveProgress = async (prog: ActivityProgress) => {
@@ -245,6 +380,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         allProgress,
         allSubmissions,
         loginAs,
+        loginWithCredentials,
+        registerWithCredentials,
         createNewUser,
         logout,
         saveProgress,
@@ -262,4 +399,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };
-
