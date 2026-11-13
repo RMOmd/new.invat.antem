@@ -3,6 +3,13 @@ import { useAuth, UserRole } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import {
+  isSupabaseConfigured,
+  getSavedSupabaseConfig,
+  saveSupabaseConfig,
+  clearSupabaseConfig,
+  testSupabaseConnection
+} from '../lib/supabase';
+import {
   User,
   LogOut,
   RefreshCw,
@@ -11,7 +18,12 @@ import {
   GraduationCap,
   Award,
   Search,
-  Trash2
+  Trash2,
+  Database,
+  CheckCircle2,
+  AlertCircle,
+  Key,
+  Link as LinkIcon
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -29,8 +41,35 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
   // Admin search state
   const [adminSearch, setAdminSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [adminTab, setAdminTab] = useState<'users' | 'database'>('users');
+  const [sbUrl, setSbUrl] = useState(() => getSavedSupabaseConfig().url);
+  const [sbKey, setSbKey] = useState(() => getSavedSupabaseConfig().anonKey);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const res = await testSupabaseConnection(sbUrl.trim(), sbKey.trim());
+      setTestResult(res);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleSaveSupabase = () => {
+    saveSupabaseConfig({
+      url: sbUrl.trim(),
+      anonKey: sbKey.trim()
+    });
+  };
+
+  const handleClearSupabase = () => {
+    clearSupabaseConfig();
+  };
 
   const handleRefreshUsers = async () => {
     setIsRefreshing(true);
@@ -201,11 +240,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
         </div>
       )}
 
-      {/* ADMIN PANEL MODAL (Only accessible by Administrator to manage roles) */}
+      {/* ADMIN PANEL MODAL (Only accessible by Administrator to manage roles & Supabase) */}
       {showAdminModal && isAdmin && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-6 h-6 text-rose-600" />
                 <div>
@@ -218,113 +257,245 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                 </div>
               </div>
 
+              {adminTab === 'users' && (
+                <button
+                  type="button"
+                  onClick={handleRefreshUsers}
+                  disabled={isRefreshing}
+                  className="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer shrink-0"
+                  title="Sincronizează din Supabase"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              )}
+            </div>
+
+            {/* Admin Tabs */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl mb-3 shrink-0">
               <button
                 type="button"
-                onClick={handleRefreshUsers}
-                disabled={isRefreshing}
-                className="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer shrink-0"
-                title="Sincronizează din Supabase"
+                onClick={() => setAdminTab('users')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  adminTab === 'users' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <User className="w-3.5 h-3.5" />
+                {t('admin_tab_users')} ({usersList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminTab('database')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  adminTab === 'database' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5" />
+                {t('admin_tab_database')}
+                <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
               </button>
             </div>
 
-            {/* Search filter */}
-            <div className="relative my-3">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={adminSearch}
-                onChange={e => setAdminSearch(e.target.value)}
-                placeholder={t('search_users')}
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            {adminTab === 'users' ? (
+              <>
+                {/* Search filter */}
+                <div className="relative mb-3 shrink-0">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={adminSearch}
+                    onChange={e => setAdminSearch(e.target.value)}
+                    placeholder={t('search_users')}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
 
-            {/* Users list */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2 max-h-[50vh]">
-              {filteredUsers.map(u => {
-                const isCurrentAdmin = u.id === currentUser?.id;
+                {/* Users list */}
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1 max-h-[50vh]">
+                  {filteredUsers.map(u => {
+                    const isCurrentAdmin = u.id === currentUser?.id;
 
-                return (
-                  <div
-                    key={u.id}
-                    className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900 truncate">
-                          {u.name}
-                        </span>
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                          u.role === 'admin'
-                            ? 'bg-rose-100 text-rose-700'
-                            : u.role === 'teacher'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {u.role === 'admin'
-                            ? t('role_admin')
-                            : u.role === 'teacher'
-                            ? t('role_teacher')
-                            : t('role_student')}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-slate-500 font-mono block truncate">
-                        {u.email}
-                      </span>
-                    </div>
+                    return (
+                      <div
+                        key={u.id}
+                        className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900 truncate">
+                              {u.name}
+                            </span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                              u.role === 'admin'
+                                ? 'bg-rose-100 text-rose-700'
+                                : u.role === 'teacher'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {u.role === 'admin'
+                                ? t('role_admin')
+                                : u.role === 'teacher'
+                                ? t('role_teacher')
+                                : t('role_student')}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 font-mono block truncate">
+                            {u.email}
+                          </span>
+                        </div>
 
-                    {/* Role changer buttons */}
-                    <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
-                      {!isCurrentAdmin && (
-                        <>
-                          {u.role === 'student' ? (
-                            <button
-                              type="button"
-                              onClick={() => changeUserRole(u.id, 'teacher')}
-                              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                            >
-                              <Award className="w-3.5 h-3.5" />
-                              {t('btn_make_teacher')}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => changeUserRole(u.id, 'student')}
-                              className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                            >
-                              <GraduationCap className="w-3.5 h-3.5" />
-                              {t('btn_make_student')}
-                            </button>
+                        {/* Role changer buttons */}
+                        <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                          {!isCurrentAdmin && (
+                            <>
+                              {u.role === 'student' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => changeUserRole(u.id, 'teacher')}
+                                  className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                                >
+                                  <Award className="w-3.5 h-3.5" />
+                                  {t('btn_make_teacher')}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => changeUserRole(u.id, 'student')}
+                                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                                >
+                                  <GraduationCap className="w-3.5 h-3.5" />
+                                  {t('btn_make_student')}
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Sigur doriți să ștergeți utilizatorul ${u.name}?`)) {
+                                    deleteUser(u.id);
+                                  }
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Șterge utilizator"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
                           )}
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Sigur doriți să ștergeți utilizatorul ${u.name}?`)) {
-                                deleteUser(u.id);
-                              }
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="Șterge utilizator"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      )}
-                      {isCurrentAdmin && (
-                        <span className="text-[10px] text-slate-400 font-semibold italic">
-                          (Contul tău)
-                        </span>
-                      )}
-                    </div>
+                          {isCurrentAdmin && (
+                            <span className="text-[10px] text-slate-400 font-semibold italic">
+                              (Contul tău)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              /* Database / Supabase configuration tab */
+              <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 my-1">
+                <div className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 ${
+                  isSupabaseConfigured()
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-amber-50 border-amber-200 text-amber-800'
+                }`}>
+                  {isSupabaseConfigured() ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <span className="font-bold block">
+                      {isSupabaseConfigured() ? t('sb_status_connected') : t('sb_status_local')}
+                    </span>
+                    <span className="text-[11px] opacity-90 block mt-0.5">
+                      {isSupabaseConfigured()
+                        ? `Supabase este activ. Progresul și conturile se sincronizează în cloud.`
+                        : `Supabase nu este configurat. Datele se păstrează doar local în browserul fiecărui vizitator.`}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+                </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1 flex items-center gap-1.5">
+                      <LinkIcon className="w-3.5 h-3.5 text-slate-500" />
+                      {t('sb_url_label')}
+                    </label>
+                    <input
+                      type="text"
+                      value={sbUrl}
+                      onChange={e => setSbUrl(e.target.value)}
+                      placeholder="https://xyzcompany.supabase.co"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1 flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-slate-500" />
+                      {t('sb_anon_label')}
+                    </label>
+                    <input
+                      type="password"
+                      value={sbKey}
+                      onChange={e => setSbKey(e.target.value)}
+                      placeholder="eyJhbGciOi..."
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {testResult && (
+                  <div className={`p-2.5 rounded-xl border text-xs flex items-center gap-2 ${
+                    testResult.success
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}>
+                    {testResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    )}
+                    <span>{testResult.message}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={isTesting}
+                    className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
+                    {t('sb_btn_test')}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveSupabase}
+                    className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {t('sb_btn_save')}
+                  </button>
+
+                  {isSupabaseConfigured() && (
+                    <button
+                      type="button"
+                      onClick={handleClearSupabase}
+                      className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl text-xs transition-colors cursor-pointer ml-auto"
+                    >
+                      {t('sb_btn_disconnect')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAdminModal(false)}

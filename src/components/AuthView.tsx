@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth, UserProfile } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { isSupabaseConfigured } from '../lib/supabase';
 import {
   Mail,
   Lock,
@@ -434,9 +435,9 @@ export const AuthView: React.FC = () => {
             <BookOpen className="w-3.5 h-3.5 text-blue-600" />
             <span>{t('auth_footer_units')}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{t('auth_footer_auto_save')}</span>
+          <div className="flex items-center gap-1.5 font-medium">
+            <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-500' : 'bg-amber-400'}`}></span>
+            <span>{isSupabaseConfigured() ? 'Supabase Cloud' : 'Local DB'}</span>
           </div>
         </div>
       </div>

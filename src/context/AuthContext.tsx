@@ -300,15 +300,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (data.user) {
           userId = data.user.id;
-          try {
-            await supabase.from('profiles').upsert({
-              id: userId,
-              email: cleanEmail,
-              name: cleanName,
-              role: 'student'
-            });
-          } catch (e) {
-            console.error('Failed to upsert profile in Supabase', e);
+          const { error: profileErr } = await supabase.from('profiles').upsert({
+            id: userId,
+            email: cleanEmail,
+            name: cleanName,
+            role: 'student'
+          });
+          if (profileErr) {
+            console.warn('Supabase profiles upsert warning:', profileErr.message);
           }
         }
       } catch (err: any) {
