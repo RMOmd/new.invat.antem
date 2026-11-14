@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CourseData, Section, Activity } from '../types/course';
+import { CourseData, Section, Activity, ActivityProgress } from '../types/course';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -25,6 +25,42 @@ interface CourseViewProps {
   focusedActivityId?: string | null;
 }
 
+// Helper to determine which section to open:
+// - The chapter where the last lesson was completed (by latest lastAttemptAt)
+// - Fallback to focused/active activity
+// - If no lessons are completed: the very top section (first chapter in the list)
+function getTargetSectionId(
+  courseData: CourseData,
+  allProgress: Record<string, ActivityProgress>,
+  focusedActivityId?: string | null
+): string {
+  const completedEntries = Object.values(allProgress).filter(p => p.completed);
+
+  if (completedEntries.length > 0) {
+    const sorted = [...completedEntries].sort((a, b) => {
+      const timeA = a.lastAttemptAt ? new Date(a.lastAttemptAt).getTime() : 0;
+      const timeB = b.lastAttemptAt ? new Date(b.lastAttemptAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    const latestActId = sorted[0].activityId;
+    const sec = courseData.sections.find(s =>
+      s.activities.some(a => a.id === latestActId)
+    );
+    if (sec) return sec.sectionId;
+  }
+
+  const activeId = focusedActivityId || (typeof window !== 'undefined' ? localStorage.getItem('romanian_last_active_activity') : null);
+  if (activeId) {
+    const sec = courseData.sections.find(s =>
+      s.activities.some(a => a.id === activeId)
+    );
+    if (sec) return sec.sectionId;
+  }
+
+  return courseData.sections[0]?.sectionId || 'unit-0';
+}
+
 export const CourseView: React.FC<CourseViewProps> = ({
   courseData,
   onSelectActivity,
@@ -35,60 +71,40 @@ export const CourseView: React.FC<CourseViewProps> = ({
   const { t } = useLanguage();
   const isDemo = currentUser?.role === 'demo';
   const [showDemoModal, setShowDemoModal] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem('romanian_expanded_sections');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (focusedActivityId) {
-          const sec = courseData.sections.find(s => s.activities.some(a => a.id === focusedActivityId));
-          if (sec) {
-            parsed[sec.sectionId] = true;
-          }
-        }
-        return parsed;
-      }
-    } catch (e) {
-      console.error('Failed to load expanded sections from localStorage', e);
-    }
 
-    const initial: Record<string, boolean> = {
-      [courseData.sections[0]?.sectionId || 'unit-0']: true,
-      [courseData.sections[1]?.sectionId || 'unit-1']: true
-    };
-    if (focusedActivityId) {
-      const sec = courseData.sections.find(s => s.activities.some(a => a.id === focusedActivityId));
-      if (sec) {
-        initial[sec.sectionId] = true;
-      }
-    }
-    return initial;
+  // Strictly open ONLY the target chapter (where last lesson was completed, or top chapter if none). All others collapsed.
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    const targetId = getTargetSectionId(courseData, allProgress, focusedActivityId);
+    return { [targetId]: true };
   });
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Persist expanded sections in localStorage on every change
+  // When allProgress updates (e.g. after completing a lesson) or focusedActivityId changes:
+  // Open only the chapter with the latest completed lesson; all others remain collapsed.
   useEffect(() => {
-    try {
-      localStorage.setItem('romanian_expanded_sections', JSON.stringify(expandedSections));
-    } catch (e) {
-      console.error('Failed to save expanded sections to localStorage', e);
-    }
-  }, [expandedSections]);
+    const targetId = getTargetSectionId(courseData, allProgress, focusedActivityId);
+    setExpandedSections({ [targetId]: true });
+  }, [allProgress, focusedActivityId, courseData]);
 
-  // When focusedActivityId changes or on mount: auto-expand section and smoothly scroll focused activity into center view
+  // Smoothly scroll the latest/focused activity into view
   useEffect(() => {
-    if (!focusedActivityId) return;
+    const targetActivityId = focusedActivityId || (() => {
+      const completedEntries = Object.values(allProgress).filter(p => p.completed);
+      if (completedEntries.length > 0) {
+        const sorted = [...completedEntries].sort((a, b) => {
+          const timeA = a.lastAttemptAt ? new Date(a.lastAttemptAt).getTime() : 0;
+          const timeB = b.lastAttemptAt ? new Date(b.lastAttemptAt).getTime() : 0;
+          return timeB - timeA;
+        });
+        return sorted[0].activityId;
+      }
+      return null;
+    })();
 
-    const sec = courseData.sections.find(s => s.activities.some(a => a.id === focusedActivityId));
-    if (sec && !expandedSections[sec.sectionId]) {
-      setExpandedSections(prev => ({
-        ...prev,
-        [sec.sectionId]: true
-      }));
-    }
+    if (!targetActivityId) return;
 
     const timer = setTimeout(() => {
-      const el = document.getElementById(`activity-item-${focusedActivityId}`);
+      const el = document.getElementById(`activity-item-${targetActivityId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('ring-4', 'ring-blue-500/40', 'bg-blue-50/90', 'scale-[1.01]');
@@ -97,16 +113,20 @@ export const CourseView: React.FC<CourseViewProps> = ({
         }, 2200);
         return () => clearTimeout(pulseTimer);
       }
-    }, 150);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [focusedActivityId]);
 
+  // Accordion toggle: opening a chapter collapses all other chapters
   const toggleSection = (secId: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [secId]: !prev[secId]
-    }));
+    setExpandedSections(prev => {
+      const isCurrentlyOpen = !!prev[secId];
+      if (isCurrentlyOpen) {
+        return {};
+      }
+      return { [secId]: true };
+    });
   };
 
   const calculateSectionStats = (section: Section) => {
