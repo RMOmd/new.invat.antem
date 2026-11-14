@@ -85,25 +85,42 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const [matchingIsAllCorrect, setMatchingIsAllCorrect] = useState(false);
   const [matchingHintTrigger, setMatchingHintTrigger] = useState(0);
 
+  const prevActivityIdRef = useRef(activity.id);
+
   useEffect(() => {
+    const isNewActivity = prevActivityIdRef.current !== activity.id;
+    prevActivityIdRef.current = activity.id;
+
     setAnswers(savedProgress?.userAnswers || {});
-    setQuizAnswers({});
     setChecked(!!savedProgress?.completed);
-    setShowAllSolutions(false);
-    setActiveGapIndex(null);
     setSubmissionText(savedProgress?.userAnswers?.[0] || '');
     setSubmittedSuccess(!!savedProgress?.completed && isAssignmentType);
-    setIsAiEvaluating(false);
-    setAiEvaluation(null);
-    setAiError(null);
-    setCopiedImproved(false);
-    setOrderHintTrigger(0);
-    setMatchingHintTrigger(0);
-    // Always scroll page and any scrollable container to top when switching exercises
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [activity.id, savedProgress, isAssignmentType]);
+
+    if (savedProgress?.userAnswers && quizQuestions.length > 0) {
+      const restoredQuiz: Record<number, number> = {};
+      Object.entries(savedProgress.userAnswers).forEach(([k, v]) => {
+        restoredQuiz[Number(k)] = Number(v);
+      });
+      setQuizAnswers(restoredQuiz);
+    } else if (isNewActivity) {
+      setQuizAnswers({});
+    }
+
+    if (isNewActivity) {
+      setShowAllSolutions(false);
+      setActiveGapIndex(null);
+      setIsAiEvaluating(false);
+      setAiEvaluation(null);
+      setAiError(null);
+      setCopiedImproved(false);
+      setOrderHintTrigger(0);
+      setMatchingHintTrigger(0);
+      // Only scroll to top when opening a DIFFERENT exercise, not on saving/retrying progress
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [activity.id, savedProgress, isAssignmentType, quizQuestions.length]);
 
   const isGapCorrect = (gapIndex: number): boolean => {
     const gap = gaps.find(g => g.gapIndex === gapIndex);
@@ -246,13 +263,17 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     if (quizQuestions.length > 0) {
       const correctCount = quizQuestions.filter(q => isQuizCorrect(q.id)).length;
       const score = Math.round((correctCount / quizQuestions.length) * 100);
+      const savedQuizAnswers: Record<string, any> = {};
+      Object.entries(quizAnswers).forEach(([k, v]) => {
+        savedQuizAnswers[k] = v;
+      });
       const prog: ActivityProgress = {
         activityId: activity.id,
         completed: true,
         score,
         correctCount,
         totalGaps: quizQuestions.length,
-        userAnswers: {},
+        userAnswers: savedQuizAnswers,
         lastAttemptAt: new Date().toISOString()
       };
       onSaveProgress(prog);

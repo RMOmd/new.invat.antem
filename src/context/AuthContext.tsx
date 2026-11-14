@@ -171,6 +171,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // 1. Immediately load cached progress from localStorage for instant display
+    const userProgressKey = `romanian_progress_${currentUser.id}`;
+    const saved = localStorage.getItem(userProgressKey);
+    if (saved) {
+      try {
+        setAllProgress(JSON.parse(saved));
+      } catch (e) {
+        setAllProgress({});
+      }
+    } else {
+      setAllProgress({});
+    }
+
+    // 2. Fetch latest progress from Supabase
     const supabase = getSupabase();
     if (supabase) {
       // Sync profile to Supabase public.profiles
@@ -179,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: currentUser.email,
         name: currentUser.name,
         role: currentUser.role
-      }).then(() => {});
+      }, { onConflict: 'id' }).then(() => {});
 
       // Load from Supabase
       supabase
@@ -201,21 +215,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               };
             });
             setAllProgress(map);
+            localStorage.setItem(userProgressKey, JSON.stringify(map));
           }
         });
-    } else {
-      // Load from localStorage isolated by user ID
-      const userProgressKey = `romanian_progress_${currentUser.id}`;
-      const saved = localStorage.getItem(userProgressKey);
-      if (saved) {
-        try {
-          setAllProgress(JSON.parse(saved));
-        } catch (e) {
-          setAllProgress({});
-        }
-      } else {
-        setAllProgress({});
-      }
     }
   }, [currentUser]);
 
@@ -619,20 +621,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return next;
     });
 
-    // Sync to Supabase if connected
+    // Sync to Supabase with onConflict: 'user_id,activity_id'
     const supabase = getSupabase();
     if (supabase) {
       try {
-        await supabase.from('user_progress').upsert({
-          user_id: currentUser.id,
-          activity_id: prog.activityId,
-          completed: prog.completed,
-          score: prog.score,
-          correct_count: prog.correctCount,
-          total_gaps: prog.totalGaps,
-          user_answers: prog.userAnswers,
-          last_attempt_at: prog.lastAttemptAt
-        });
+        const { error } = await supabase.from('user_progress').upsert(
+          {
+            user_id: currentUser.id,
+            activity_id: prog.activityId,
+            completed: prog.completed,
+            score: prog.score,
+            correct_count: prog.correctCount,
+            total_gaps: prog.totalGaps,
+            user_answers: prog.userAnswers,
+            last_attempt_at: prog.lastAttemptAt
+          },
+          { onConflict: 'user_id,activity_id' }
+        );
+        if (error) {
+          console.error('Supabase save progress error:', error.message);
+        }
       } catch (e) {
         console.error('Supabase save error', e);
       }
