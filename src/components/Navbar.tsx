@@ -34,7 +34,17 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise }) => {
-  const { currentUser, usersList, changeUserRole, deleteUser, refreshUsersList, syncLocalUsersToSupabase, logout } = useAuth();
+  const {
+    currentUser,
+    usersList,
+    changeUserRole,
+    deleteUser,
+    refreshUsersList,
+    syncLocalUsersToSupabase,
+    logout,
+    syncAllFromDatabase,
+    isSyncing: isMasterSyncing
+  } = useAuth();
   const { t } = useLanguage();
 
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -121,6 +131,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Cloud Database Sync indicator & trigger */}
+            <button
+              type="button"
+              onClick={() => syncAllFromDatabase()}
+              disabled={isMasterSyncing}
+              title={isMasterSyncing ? "Sincronizare cu baza de date..." : "Baza de date conectată. Click pentru actualizare date"}
+              className={`p-1.5 sm:px-2 sm:py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
+                isMasterSyncing
+                  ? 'bg-blue-50 border-blue-200 text-blue-600'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isMasterSyncing ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+              <span className="hidden md:inline text-[11px]">
+                {isMasterSyncing ? 'Sincronizare...' : 'Sync'}
+              </span>
+            </button>
+
             {/* Language Switcher */}
             <LanguageSwitcher />
 

@@ -27,6 +27,9 @@ interface AuthContextType {
   deleteUser: (userId: string) => Promise<void>;
   refreshUsersList: () => Promise<void>;
   refreshSubmissions: () => Promise<void>;
+  syncAllFromDatabase: () => Promise<void>;
+  isSyncing: boolean;
+  lastSyncedAt: string | null;
   syncLocalUsersToSupabase: () => Promise<{ count: number; error?: string }>;
   logout: () => void;
   saveProgress: (progress: ActivityProgress) => Promise<void>;
@@ -221,6 +224,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+
   // Sync users list from Supabase if currentUser is admin
   const refreshUsersList = async () => {
     const supabase = getSupabase();
@@ -273,29 +279,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  useEffect(() => {
-    if (currentUser?.role === 'admin') {
-      refreshUsersList();
-    }
-  }, [currentUser]);
-
-  // Fetch remote submissions from Supabase and cache locally
-  const fetchRemoteSubmissions = useCallback(async () => {
+  // MASTER SYNC: Queries Supabase for latest progress, submissions, and profiles on every load/refresh
+  const syncAllFromDatabase = useCallback(async () => {
     const supabase = getSupabase();
     if (!supabase) return;
+
+    setIsSyncing(true);
     try {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Parallel fetch from Supabase
+      const [subsRes, progRes, profileRes] = await Promise.all([
+        supabase
+          .from('submissions')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        currentUser
+          ? supabase.from('user_progress').select('*').eq('user_id', currentUser.id)
+          : Promise.resolve(null),
+        currentUser
+          ? supabase.from('profiles').select('*').eq('id', currentUser.id).maybeSingle()
+          : Promise.resolve(null)
+      ]);
 
-      if (error) {
-        console.warn('Failed to fetch remote submissions from Supabase:', error.message);
-        return;
-      }
-
-      if (data) {
-        const mapped: AssignmentSubmission[] = data.map((row: any) => ({
+      // Apply latest submissions
+      if (!subsRes.error && subsRes.data) {
+        const mapped: AssignmentSubmission[] = subsRes.data.map((row: any) => ({
           id: row.id,
           userId: row.user_id,
           userEmail: row.user_email,
@@ -308,61 +315,118 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           teacherFeedback: row.teacher_feedback || undefined,
           createdAt: row.created_at
         }));
-
         setAllSubmissions(mapped);
         localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(mapped));
       }
-    } catch (e) {
-      console.error('Error fetching submissions from Supabase:', e);
+
+      // Apply latest user progress
+      if (currentUser && progRes && !progRes.error && progRes.data) {
+        const map: Record<string, ActivityProgress> = {};
+        progRes.data.forEach((row: any) => {
+          map[row.activity_id] = {
+            activityId: row.activity_id,
+            completed: row.completed,
+            score: row.score,
+            correctCount: row.correct_count,
+            totalGaps: row.total_gaps,
+            userAnswers: row.user_answers || {},
+            lastAttemptAt: row.last_attempt_at
+          };
+        });
+        setAllProgress(map);
+        const userProgressKey = `romanian_progress_${currentUser.id}`;
+        localStorage.setItem(userProgressKey, JSON.stringify(map));
+      }
+
+      // Apply latest profile & role
+      if (currentUser && profileRes && !profileRes.error && profileRes.data) {
+        const p = profileRes.data;
+        const cleanEmail = currentUser.email.toLowerCase();
+        const isAdminEmail = cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com';
+        const freshRole: UserRole = isAdminEmail ? 'admin' : ((p.role as UserRole) || currentUser.role);
+
+        if (p.name !== currentUser.name || freshRole !== currentUser.role) {
+          const updatedProfile: UserProfile = {
+            ...currentUser,
+            name: p.name || currentUser.name,
+            role: freshRole
+          };
+          setCurrentUser(updatedProfile);
+          localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedProfile));
+        }
+      }
+
+      // If admin, also refresh users list
+      if (currentUser?.role === 'admin') {
+        refreshUsersList();
+      }
+
+      setLastSyncedAt(new Date().toISOString());
+    } catch (err) {
+      console.warn('Sync from cloud database error:', err);
+    } finally {
+      setIsSyncing(false);
     }
-  }, []);
+  }, [currentUser]);
 
-  // Listen to remote submissions and subscribe to Supabase Realtime changes + Auto-sync
+  // Guaranteed Fresh Database Sync on:
+  // - Every page refresh / app mount
+  // - User login / change
+  // - Window focus / tab switch
+  // - Online reconnect
+  // - Realtime postgres changes on submissions and user_progress
   useEffect(() => {
-    fetchRemoteSubmissions();
+    syncAllFromDatabase();
 
-    // 1. Auto-fetch on window focus and visibility change (e.g. switching back to tab, unlocking phone)
-    const onFocus = () => fetchRemoteSubmissions();
-    const onVisibilityChange = () => {
+    const handleFocus = () => syncAllFromDatabase();
+    const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        fetchRemoteSubmissions();
+        syncAllFromDatabase();
       }
     };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    const handleOnline = () => syncAllFromDatabase();
 
-    // 2. Polling interval every 25 seconds for mobile devices where WebSockets sleep
-    const pollInterval = setInterval(() => {
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('online', handleOnline);
+
+    const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchRemoteSubmissions();
+        syncAllFromDatabase();
       }
-    }, 25000);
+    }, 20000);
 
-    // 3. Supabase Realtime channel
     const supabase = getSupabase();
-    let channel: any = null;
+    let subsChannel: any = null;
+    let progChannel: any = null;
+
     if (supabase) {
-      channel = supabase
-        .channel('submissions_realtime')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'submissions' },
-          () => {
-            fetchRemoteSubmissions();
-          }
-        )
+      subsChannel = supabase
+        .channel('submissions_realtime_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
+          syncAllFromDatabase();
+        })
+        .subscribe();
+
+      progChannel = supabase
+        .channel('progress_realtime_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_progress' }, () => {
+          syncAllFromDatabase();
+        })
         .subscribe();
     }
 
     return () => {
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      clearInterval(pollInterval);
-      if (supabase && channel) {
-        supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('online', handleOnline);
+      clearInterval(interval);
+      if (supabase) {
+        if (subsChannel) supabase.removeChannel(subsChannel);
+        if (progChannel) supabase.removeChannel(progChannel);
       }
     };
-  }, [fetchRemoteSubmissions, currentUser]);
+  }, [syncAllFromDatabase]);
 
   const loginAs = (user: UserProfile) => {
     const isAdminEmail = user.email.toLowerCase() === 'admin@antem.org' || user.email.toLowerCase() === 'rmo84791@gmail.com';
@@ -686,7 +750,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           teacher_feedback: submission.teacherFeedback ?? null,
           created_at: submission.createdAt
         });
-        await fetchRemoteSubmissions();
+        await syncAllFromDatabase();
       } catch (e) {
         console.error('Supabase submit error', e);
       }
@@ -740,7 +804,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             teacher_feedback: feedback
           })
           .eq('id', submissionId);
-        await fetchRemoteSubmissions();
+        await syncAllFromDatabase();
       } catch (e) {
         console.error('Supabase review error', e);
       }
@@ -761,7 +825,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('submissions')
           .delete()
           .eq('id', submissionId);
-        await fetchRemoteSubmissions();
+        await syncAllFromDatabase();
       } catch (e) {
         console.error('Supabase delete submission error', e);
       }
@@ -782,7 +846,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         changeUserRole,
         deleteUser,
         refreshUsersList,
-        refreshSubmissions: fetchRemoteSubmissions,
+        refreshSubmissions: syncAllFromDatabase,
+        syncAllFromDatabase,
+        isSyncing,
+        lastSyncedAt,
         syncLocalUsersToSupabase,
         logout,
         saveProgress,
