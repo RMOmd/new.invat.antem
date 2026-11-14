@@ -8,6 +8,7 @@ import { CourseView } from './components/CourseView';
 import { ExerciseRunner } from './components/ExerciseRunner';
 import { StatsView } from './components/StatsView';
 import { SubmissionsView } from './components/SubmissionsView';
+import { ProfileView } from './components/ProfileView';
 import { AuthView } from './components/AuthView';
 import { Loader2, ArrowLeft, BookOpen, BarChart3, Send } from 'lucide-react';
 
@@ -249,10 +250,7 @@ const AppContent: React.FC = () => {
             {currentTab === 'submissions' && <SubmissionsView />}
 
             {currentTab === 'profile' && (
-              <StatsView
-                courseData={courseData}
-                onSelectActivityById={handleSelectActivityById}
-              />
+              <ProfileView courseData={courseData} />
             )}
           </>
         )}
