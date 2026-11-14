@@ -79,11 +79,17 @@ export const CourseView: React.FC<CourseViewProps> = ({
   });
   const [searchQuery, setSearchQuery] = useState('');
 
-  // When allProgress updates (e.g. after completing a lesson) or focusedActivityId changes:
-  // Open only the chapter with the latest completed lesson; all others remain collapsed.
+  const prevTargetIdRef = React.useRef<string>(getTargetSectionId(courseData, allProgress, focusedActivityId));
+
+  // When allProgress updates with a new completed lesson or focusedActivityId changes:
+  // Open only the chapter with the newly completed lesson; all others remain collapsed.
+  // Won't collapse the chapter user is browsing during background sync if target hasn't changed.
   useEffect(() => {
     const targetId = getTargetSectionId(courseData, allProgress, focusedActivityId);
-    setExpandedSections({ [targetId]: true });
+    if (prevTargetIdRef.current !== targetId) {
+      prevTargetIdRef.current = targetId;
+      setExpandedSections({ [targetId]: true });
+    }
   }, [allProgress, focusedActivityId, courseData]);
 
   // Smoothly scroll the latest/focused activity into view

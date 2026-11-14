@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { ActivityProgress, AssignmentSubmission, AIEvaluationResult } from '../types/course';
 import { notifyNewSubmission, notifyReviewedSubmission } from '../lib/telegram';
@@ -279,6 +279,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const currentUserRef = useRef<UserProfile | null>(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   // MASTER SYNC: Queries Supabase for latest progress, submissions, and profiles on every load/refresh
   const syncAllFromDatabase = useCallback(async () => {
     const supabase = getSupabase();
@@ -286,17 +291,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsSyncing(true);
     try {
+      const activeUser = currentUserRef.current;
+
       // Parallel fetch from Supabase
       const [subsRes, progRes, profileRes] = await Promise.all([
         supabase
           .from('submissions')
           .select('*')
           .order('created_at', { ascending: false }),
-        currentUser
-          ? supabase.from('user_progress').select('*').eq('user_id', currentUser.id)
+        activeUser
+          ? supabase.from('user_progress').select('*').eq('user_id', activeUser.id)
           : Promise.resolve(null),
-        currentUser
-          ? supabase.from('profiles').select('*').eq('id', currentUser.id).maybeSingle()
+        activeUser
+          ? supabase.from('profiles').select('*').eq('id', activeUser.id).maybeSingle()
           : Promise.resolve(null)
       ]);
 
@@ -320,7 +327,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Apply latest user progress
-      if (currentUser && progRes && !progRes.error && progRes.data) {
+      if (activeUser && progRes && !progRes.error && progRes.data) {
         const map: Record<string, ActivityProgress> = {};
         progRes.data.forEach((row: any) => {
           map[row.activity_id] = {
@@ -334,30 +341,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
         });
         setAllProgress(map);
-        const userProgressKey = `romanian_progress_${currentUser.id}`;
+        const userProgressKey = `romanian_progress_${activeUser.id}`;
         localStorage.setItem(userProgressKey, JSON.stringify(map));
       }
 
       // Apply latest profile & role
-      if (currentUser && profileRes && !profileRes.error && profileRes.data) {
+      if (activeUser && profileRes && !profileRes.error && profileRes.data) {
         const p = profileRes.data;
-        const cleanEmail = currentUser.email.toLowerCase();
+        const cleanEmail = activeUser.email.toLowerCase();
         const isAdminEmail = cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com';
-        const freshRole: UserRole = isAdminEmail ? 'admin' : ((p.role as UserRole) || currentUser.role);
+        const freshRole: UserRole = isAdminEmail ? 'admin' : ((p.role as UserRole) || activeUser.role);
 
-        if (p.name !== currentUser.name || freshRole !== currentUser.role) {
+        if (p.name !== activeUser.name || freshRole !== activeUser.role) {
           const updatedProfile: UserProfile = {
-            ...currentUser,
-            name: p.name || currentUser.name,
+            ...activeUser,
+            name: p.name || activeUser.name,
             role: freshRole
           };
           setCurrentUser(updatedProfile);
+          currentUserRef.current = updatedProfile;
           localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedProfile));
         }
       }
 
       // If admin, also refresh users list
-      if (currentUser?.role === 'admin') {
+      if (activeUser?.role === 'admin') {
         refreshUsersList();
       }
 
@@ -367,17 +375,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsSyncing(false);
     }
-  }, [currentUser]);
+  }, []);
 
-  // Guaranteed Fresh Database Sync on:
-  // - Every page refresh / app mount
-  // - User login / change
-  // - Window focus / tab switch
-  // - Online reconnect
-  // - Realtime postgres changes on submissions and user_progress
+  // Sync immediately when user changes (login, logout, switch)
   useEffect(() => {
     syncAllFromDatabase();
+  }, [currentUser, syncAllFromDatabase]);
 
+  // Long-lived real-time subscriptions and window focus/interval polling (registered once)
+  useEffect(() => {
     const handleFocus = () => syncAllFromDatabase();
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {

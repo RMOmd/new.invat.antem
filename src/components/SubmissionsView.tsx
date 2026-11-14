@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { AssignmentSubmission } from '../types/course';
 import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
-import { getTelegramConfig, saveTelegramConfig, isTelegramConfigured, sendTelegramMessage } from '../lib/telegram';
+import { getTelegramConfig, saveTelegramConfig, isTelegramConfigured, sendTelegramMessage, notifyReviewedSubmission } from '../lib/telegram';
 import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw, Bell, Settings, Check, X, ChevronDown, ChevronUp, ChevronsUpDown, Filter } from 'lucide-react';
 
 interface ParsedFeedback {
@@ -229,7 +229,20 @@ export const SubmissionsView: React.FC = () => {
   };
 
   const handleReview = (subId: string) => {
+    const targetSub = allSubmissions.find(s => s.id === subId);
     reviewSubmission(subId, Number(gradeInput), feedbackInput);
+
+    // Notify Telegram channel / teacher bot about reviewed submission
+    if (targetSub) {
+      notifyReviewedSubmission({
+        userName: targetSub.userName,
+        userEmail: targetSub.userEmail,
+        activityTitle: targetSub.activityTitle,
+        grade: Number(gradeInput),
+        feedback: feedbackInput
+      }).catch(err => console.warn('Telegram review notification warning:', err));
+    }
+
     setSelectedSubId(null);
     setFeedbackInput('');
   };
