@@ -18,6 +18,8 @@ interface OrderItem {
   text: string;
 }
 
+const clean = (s: string) => (s || '').trim().replace(/\s+/g, ' ');
+
 const buildInitialItems = (
   listItems: string[],
   saved?: Record<string | number, string> | string[],
@@ -40,7 +42,7 @@ const buildInitialItems = (
     for (let i = 0; i < listItems.length; i++) {
       const savedText = Array.isArray(saved) ? saved[i] : (saved[i] || saved[String(i)]);
       if (savedText) {
-        const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && item.text === savedText);
+        const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && clean(item.text) === clean(savedText));
         if (foundIdx !== -1) {
           restored.push(defaultList[foundIdx]);
           usedIndices.add(foundIdx);
@@ -109,9 +111,9 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
     setItems(prev => {
       const next = [...prev];
       for (let slot = 0; slot < orderItems.length; slot++) {
-        if (next[slot].text !== orderItems[slot]) {
+        if (clean(next[slot].text) !== clean(orderItems[slot])) {
           // Find the matching item in remaining slots
-          const targetIdx = next.findIndex((item, i) => i > slot && item.text === orderItems[slot]);
+          const targetIdx = next.findIndex((item, i) => i > slot && clean(item.text) === clean(orderItems[slot]));
           if (targetIdx !== -1) {
             const temp = next[slot];
             next[slot] = next[targetIdx];
@@ -150,7 +152,7 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
   useEffect(() => {
     let correct = 0;
     items.forEach((item, idx) => {
-      if (item.text === orderItems[idx]) {
+      if (clean(item.text) === clean(orderItems[idx])) {
         correct++;
       }
     });
@@ -171,8 +173,8 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
 
       <div className="space-y-2.5">
         {items.map((item, idx) => {
-          const isCorrectPosition = checked && item.text === orderItems[idx];
-          const isWrongPosition = checked && item.text !== orderItems[idx];
+          const isCorrectPosition = checked && clean(item.text) === clean(orderItems[idx]);
+          const isWrongPosition = checked && clean(item.text) !== clean(orderItems[idx]);
 
           return (
             <div

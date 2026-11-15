@@ -285,6 +285,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const supabase = getSupabase();
     if (!supabase) return;
 
+    // SECURITY: Unauthenticated visitors must NEVER query submissions or user_progress
+    const activeUser = currentUserRef.current;
+    if (!activeUser) {
+      return;
+    }
+
     const now = Date.now();
     // Throttle: don't sync if another sync finished less than 5 seconds ago (unless forced)
     if (!options?.force && now - lastSyncTimestampRef.current < 5000) {
@@ -299,26 +305,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const runSync = async () => {
       setIsSyncing(true);
       try {
-        const activeUser = currentUserRef.current;
-        const isAdmin = activeUser?.role === 'admin' || 
-                        activeUser?.email.toLowerCase() === 'admin@antem.org' || 
-                        activeUser?.email.toLowerCase() === 'rmo84791@gmail.com';
+        const isStaff = activeUser.role === 'teacher' || 
+                        activeUser.role === 'admin' || 
+                        activeUser.email.toLowerCase() === 'admin@antem.org' || 
+                        activeUser.email.toLowerCase() === 'rmo84791@gmail.com';
+        const isAdmin = activeUser.role === 'admin' || 
+                        activeUser.email.toLowerCase() === 'admin@antem.org' || 
+                        activeUser.email.toLowerCase() === 'rmo84791@gmail.com';
 
         // 1 consolidated batch:
-        // - submissions
+        // - submissions (Staff sees all for review, Student sees ONLY their own submissions)
         // - user_progress (only for active user)
         // - profiles (if admin: select('*') satisfies BOTH usersList and activeUser profile in 1 query!)
         const [subsRes, progRes, profilesRes] = await Promise.all([
-          supabase
-            .from('submissions')
-            .select('*')
-            .order('created_at', { ascending: false }),
-          activeUser
-            ? supabase.from('user_progress').select('*').eq('user_id', activeUser.id)
-            : Promise.resolve(null),
+          isStaff
+            ? supabase.from('submissions').select('*').order('created_at', { ascending: false })
+            : supabase.from('submissions').select('*').eq('user_id', activeUser.id).order('created_at', { ascending: false }),
+          supabase.from('user_progress').select('*').eq('user_id', activeUser.id),
           isAdmin
             ? supabase.from('profiles').select('*')
-            : (activeUser ? supabase.from('profiles').select('*').eq('id', activeUser.id).maybeSingle() : Promise.resolve(null))
+            : supabase.from('profiles').select('*').eq('id', activeUser.id).maybeSingle()
         ]);
 
         // 1. Submissions
@@ -436,10 +442,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser?.id, syncAllFromDatabase]);
 
-  // Long-lived real-time subscriptions and window focus/interval polling (registered once)
+  // Long-lived real-time subscriptions and window focus/interval polling
   useEffect(() => {
-    // When returning to tab or window focus, only sync if it has been at least 30 seconds since last sync
+    // When returning to tab or window focus, only sync if logged in and it has been at least 30 seconds
     const handleFocusOrVisible = () => {
+      if (!currentUserRef.current) return;
       if (document.visibilityState === 'visible') {
         const timeSinceLastSync = Date.now() - lastSyncTimestampRef.current;
         if (timeSinceLastSync > 30000) {
@@ -452,8 +459,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     document.addEventListener('visibilitychange', handleFocusOrVisible);
     window.addEventListener('online', handleFocusOrVisible);
 
-    // Light background sync interval: 120 seconds (2 minutes), only when tab is active and last sync > 60s
+    // Light background sync interval: 120 seconds (2 minutes), only when user is logged in
     const interval = setInterval(() => {
+      if (!currentUserRef.current) return;
       if (document.visibilityState === 'visible') {
         const timeSinceLastSync = Date.now() - lastSyncTimestampRef.current;
         if (timeSinceLastSync > 60000) {
@@ -480,38 +488,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // ignore
       }
 
-      // Debounced sync function for realtime events (collapses multiple rapid events into 1 sync)
-      const triggerDebouncedSync = () => {
-        if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
-        realtimeDebounceTimer = setTimeout(() => {
-          syncAllFromDatabase({ force: true });
-        }, 1500);
-      };
+      // Only establish realtime channels if an authenticated user is active
+      if (currentUser) {
+        // Debounced sync function for realtime events (collapses multiple rapid events into 1 sync)
+        const triggerDebouncedSync = () => {
+          if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
+          realtimeDebounceTimer = setTimeout(() => {
+            syncAllFromDatabase({ force: true });
+          }, 1500);
+        };
 
-      subsChannel = supabase
-        .channel('submissions_realtime_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
-          triggerDebouncedSync();
-        })
-        .subscribe();
+        subsChannel = supabase
+          .channel(`submissions_realtime_${currentUser.id}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
+            triggerDebouncedSync();
+          })
+          .subscribe();
 
-      progChannel = supabase
-        .channel('progress_realtime_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_progress' }, (payload: any) => {
-          const activeUser = currentUserRef.current;
-          const payloadUserId = payload?.new?.user_id || payload?.old?.user_id;
+        progChannel = supabase
+          .channel(`progress_realtime_${currentUser.id}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_progress' }, (payload: any) => {
+            const activeUser = currentUserRef.current;
+            const payloadUserId = payload?.new?.user_id || payload?.old?.user_id;
 
-          // If another student changed their progress:
-          // Invalidate their cached student card entry, but DO NOT re-query the entire database for this client!
-          if (activeUser && payloadUserId && payloadUserId !== activeUser.id) {
-            studentProgressCacheRef.current.delete(payloadUserId);
-            return;
-          }
+            // If another student changed their progress:
+            // Invalidate their cached student card entry, but DO NOT re-query the entire database for this client!
+            if (activeUser && payloadUserId && payloadUserId !== activeUser.id) {
+              studentProgressCacheRef.current.delete(payloadUserId);
+              return;
+            }
 
-          // If it's the active user: debounce sync
-          triggerDebouncedSync();
-        })
-        .subscribe();
+            // If it's the active user: debounce sync
+            triggerDebouncedSync();
+          })
+          .subscribe();
+      }
     }
 
     return () => {
@@ -528,7 +539,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (progChannel) supabase.removeChannel(progChannel);
       }
     };
-  }, [syncAllFromDatabase]);
+  }, [currentUser?.id, syncAllFromDatabase]);
 
   const loginAs = useCallback((user: UserProfile) => {
     const isAdminEmail = user.email.toLowerCase() === 'admin@antem.org' || user.email.toLowerCase() === 'rmo84791@gmail.com';
@@ -905,6 +916,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(() => {
     setCurrentUser(null);
     currentUserRef.current = null;
+    setAllSubmissions([]);
+    setAllProgress({});
     localStorage.removeItem(LOCAL_CURRENT_USER_KEY);
     const supabase = getSupabase();
     if (supabase) {

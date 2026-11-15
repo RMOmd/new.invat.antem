@@ -19,6 +19,8 @@ interface AnswerSlot {
   text: string;
 }
 
+const clean = (s: string) => (s || '').trim().replace(/\s+/g, ' ');
+
 const buildInitialAnswers = (
   pairsList: MatchingPair[],
   saved?: Record<string | number, string>,
@@ -37,7 +39,7 @@ const buildInitialAnswers = (
     for (let i = 0; i < pairsList.length; i++) {
       const savedText = saved[i] || saved[String(i)];
       if (savedText) {
-        const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && item.text === savedText);
+        const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && clean(item.text) === clean(savedText));
         if (foundIdx !== -1) {
           restored.push(defaultList[foundIdx]);
           usedIndices.add(foundIdx);
@@ -162,7 +164,7 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
   useEffect(() => {
     let correct = 0;
     answers.forEach((ans, idx) => {
-      if (ans.text === pairs[idx].correctAnswer) {
+      if (clean(ans.text) === clean(pairs[idx].correctAnswer)) {
         correct++;
       }
     });
@@ -185,8 +187,8 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
       <div className="space-y-3">
         {pairs.map((pair, idx) => {
           const currentAnswer = answers[idx];
-          const isCorrect = checked && currentAnswer?.text === pair.correctAnswer;
-          const isWrong = checked && currentAnswer?.text !== pair.correctAnswer;
+          const isCorrect = checked && clean(currentAnswer?.text) === clean(pair.correctAnswer);
+          const isWrong = checked && clean(currentAnswer?.text) !== clean(pair.correctAnswer);
 
           return (
             <div

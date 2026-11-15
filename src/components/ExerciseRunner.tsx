@@ -137,6 +137,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   });
   const [matchingIsAllCorrect, setMatchingIsAllCorrect] = useState(false);
   const [matchingHintTrigger, setMatchingHintTrigger] = useState(0);
+  const [resetCounter, setResetCounter] = useState(0);
 
   const prevActivityIdRef = useRef(activity.id);
 
@@ -481,6 +482,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     setShowAllSolutions(false);
     setOrderHintTrigger(0);
     setMatchingHintTrigger(0);
+    setResetCounter(prev => prev + 1);
     if (isAssignmentType) {
       setSubmissionText('');
       setSubmittedSuccess(false);
@@ -700,7 +702,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         {/* Interactive Dialogue Reordering Component if orderItems exist */}
         {orderItems.length > 0 && (
           <DialogueReorder
-            key={`order-${activity.id}`}
+            key={`order-${activity.id}-${resetCounter}`}
             orderItems={orderItems}
             checked={checked}
             savedOrder={savedProgress?.userAnswers}
@@ -718,7 +720,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         {/* Interactive Matching Pairs Component if matchingPairs exist */}
         {matchingPairs.length > 0 && (
           <MatchingRunner
-            key={`match-${activity.id}`}
+            key={`match-${activity.id}-${resetCounter}`}
             pairs={matchingPairs}
             checked={checked}
             savedAnswers={savedProgress?.userAnswers}
