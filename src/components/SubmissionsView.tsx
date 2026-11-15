@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { AssignmentSubmission } from '../types/course';
+import { AssignmentSubmission, CourseData } from '../types/course';
 import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
 import { getTelegramConfig, saveTelegramConfig, isTelegramConfigured, sendTelegramMessage, notifyReviewedSubmission } from '../lib/telegram';
+import { StudentCardModal, StudentCardTarget } from './StudentCardModal';
 import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw, Bell, Settings, Check, X, ChevronDown, ChevronUp, ChevronsUpDown, Filter, FileEdit } from 'lucide-react';
 
 interface ParsedFeedback {
@@ -148,10 +149,15 @@ export const FormattedFeedback: React.FC<{ feedback: string }> = ({ feedback }) 
   );
 };
 
-export const SubmissionsView: React.FC = () => {
+interface SubmissionsViewProps {
+  courseData?: CourseData;
+}
+
+export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) => {
   const { currentUser, allSubmissions, reviewSubmission, deleteSubmission, refreshSubmissions } = useAuth();
   const { t } = useLanguage();
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
+  const [selectedStudentForCard, setSelectedStudentForCard] = useState<StudentCardTarget | null>(null);
   const [gradeInput, setGradeInput] = useState<number>(10);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -523,9 +529,26 @@ export const SubmissionsView: React.FC = () => {
                         {new Date(sub.createdAt).toLocaleString()}
                       </span>
                       {isTeacher && (
-                        <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <User className="w-3 h-3 text-slate-400" /> {sub.userName} ({sub.userEmail})
-                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedStudentForCard({
+                              id: sub.userId,
+                              name: sub.userName,
+                              email: sub.userEmail
+                            });
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 px-2.5 py-1 rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-xs group"
+                          title="Deschide dosarul și statistica detaliată a elevului"
+                        >
+                          <User className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                          <span>{sub.userName}</span>
+                          <span className="text-slate-500 font-mono text-[11px] font-normal">({sub.userEmail})</span>
+                          <span className="text-[10px] font-extrabold uppercase bg-blue-600 text-white px-1.5 py-0.2 rounded tracking-wider shadow-2xs">
+                            {t('student_card_btn_open')}
+                          </span>
+                        </button>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -768,6 +791,14 @@ export const SubmissionsView: React.FC = () => {
             );
           })}
         </div>
+      )}
+      {/* Student Dossier / Card Modal */}
+      {selectedStudentForCard && courseData && (
+        <StudentCardModal
+          student={selectedStudentForCard}
+          courseData={courseData}
+          onClose={() => setSelectedStudentForCard(null)}
+        />
       )}
     </div>
   );

@@ -27,6 +27,7 @@ interface AuthContextType {
   deleteUser: (userId: string) => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   updateUserPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  getStudentProgress: (userId: string) => Promise<Record<string, ActivityProgress>>;
   isPasswordRecoveryMode: boolean;
   setIsPasswordRecoveryMode: (active: boolean) => void;
   refreshUsersList: () => Promise<void>;
@@ -771,6 +772,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const getStudentProgress = async (userId: string): Promise<Record<string, ActivityProgress>> => {
+    if (currentUser && currentUser.id === userId && Object.keys(allProgress).length > 0) {
+      return allProgress;
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', userId);
+        if (!error && data && data.length > 0) {
+          const map: Record<string, ActivityProgress> = {};
+          data.forEach((row: any) => {
+            map[row.activity_id] = {
+              activityId: row.activity_id,
+              completed: row.completed,
+              score: row.score,
+              correctCount: row.correct_count,
+              totalGaps: row.total_gaps,
+              userAnswers: row.user_answers || {},
+              lastAttemptAt: row.last_attempt_at
+            };
+          });
+          return map;
+        }
+      } catch (e) {
+        console.warn('Failed to fetch student progress from Supabase:', e);
+      }
+    }
+
+    // Local storage fallback
+    try {
+      const raw = localStorage.getItem(`romanian_progress_${userId}`);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+
+    return {};
+  };
+
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem(LOCAL_CURRENT_USER_KEY);
@@ -953,6 +995,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteUser,
         resetPasswordForEmail,
         updateUserPassword,
+        getStudentProgress,
         isPasswordRecoveryMode,
         setIsPasswordRecoveryMode,
         refreshUsersList,

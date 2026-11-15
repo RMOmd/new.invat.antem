@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth, UserRole } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { CourseData } from '../types/course';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { StudentCardModal, StudentCardTarget } from './StudentCardModal';
 import {
   isSupabaseConfigured,
   getSavedSupabaseConfig,
@@ -32,9 +34,10 @@ import {
 interface NavbarProps {
   onBackToCourse?: () => void;
   isInsideExercise?: boolean;
+  courseData?: CourseData;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise, courseData }) => {
   const {
     currentUser,
     usersList,
@@ -52,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedStudentForCard, setSelectedStudentForCard] = useState<StudentCardTarget | null>(null);
 
   // Profile password change state
   const [showChangePass, setShowChangePass] = useState(false);
@@ -542,9 +546,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                         key={u.id}
                         className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all"
                       >
-                        <div className="min-w-0">
+                        <div
+                          className="min-w-0 cursor-pointer group"
+                          onClick={() => setSelectedStudentForCard({ id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt })}
+                          title="Click pentru a deschide dosarul și statistica elevului"
+                        >
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900 truncate">
+                            <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                               {u.name}
                             </span>
                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
@@ -560,8 +568,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                                 ? t('role_teacher')
                                 : t('role_student')}
                             </span>
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded group-hover:bg-blue-600 group-hover:text-white transition-all">
+                              {t('student_card_btn_open')}
+                            </span>
                           </div>
-                          <span className="text-[11px] text-slate-500 font-mono block truncate">
+                          <span className="text-[11px] text-slate-500 font-mono block truncate group-hover:underline">
                             {u.email}
                           </span>
                         </div>
@@ -729,6 +740,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
             </div>
           </div>
         </div>
+      )}
+      {/* Student Dossier / Card Modal */}
+      {selectedStudentForCard && courseData && (
+        <StudentCardModal
+          student={selectedStudentForCard}
+          courseData={courseData}
+          onClose={() => setSelectedStudentForCard(null)}
+        />
       )}
     </>
   );

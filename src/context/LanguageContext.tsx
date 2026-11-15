@@ -233,7 +233,22 @@ export const translations: Record<Language, Record<string, string>> = {
     subs_btn_delete: 'Șterge lucrarea',
     subs_confirm_delete: 'Sigur doriți să ștergeți această lucrare?',
     subs_grade_ph: 'Introduceți nota (1-10)',
-    subs_feedback_ph: 'Scrieți feedback-ul și recomandările pentru student...'
+    subs_feedback_ph: 'Scrieți feedback-ul și recomandările pentru student...',
+
+    // Student Card & Dossier
+    student_card_title: 'Dosarul și Statistica Elevului',
+    student_card_subtitle: 'Raport complet privind activitățile parcurse, notele și răspunsurile elevului.',
+    student_card_btn_open: 'Dosar elev',
+    student_card_tab_exercises: 'Lecții finalizate',
+    student_card_tab_submissions: 'Teme transmise',
+    student_card_tab_weak: 'Puncte slabe (<80%)',
+    student_card_kpi_progress: 'Progres curs',
+    student_card_kpi_avg_score: 'Scor mediu teste',
+    student_card_kpi_avg_grade: 'Media notelor',
+    student_card_kpi_answers: 'Răspunsuri corecte',
+    student_card_no_exercises: 'Elevul nu a completat încă nicio activitate.',
+    student_card_no_submissions: 'Elevul nu a trimis încă nicio lucrare la verificare.',
+    student_card_no_weak: 'Excelent! Elevul nu are activități cu scor scăzut sub 80%.'
   },
 
   ru: {
@@ -458,7 +473,22 @@ export const translations: Record<Language, Record<string, string>> = {
     subs_btn_delete: 'Удалить работу',
     subs_confirm_delete: 'Вы уверены, что хотите удалить эту работу?',
     subs_grade_ph: 'Введите оценку (1-10)',
-    subs_feedback_ph: 'Напишите комментарий и рекомендации для студента...'
+    subs_feedback_ph: 'Напишите комментарий и рекомендации для студента...',
+
+    // Student Card & Dossier
+    student_card_title: 'Карточка и Статистика Ученика',
+    student_card_subtitle: 'Полный отчёт по пройденным урокам, оценкам и выполненным заданиям.',
+    student_card_btn_open: 'Карточка',
+    student_card_tab_exercises: 'Пройденные уроки',
+    student_card_tab_submissions: 'Письменные работы',
+    student_card_tab_weak: 'Ошибки и повторение (<80%)',
+    student_card_kpi_progress: 'Прогресс по курсу',
+    student_card_kpi_avg_score: 'Средний балл тестов',
+    student_card_kpi_avg_grade: 'Средняя оценка',
+    student_card_kpi_answers: 'Правильных ответов',
+    student_card_no_exercises: 'Ученик пока не выполнил ни одного урока.',
+    student_card_no_submissions: 'Ученик пока не отправлял письменных заданий на проверку.',
+    student_card_no_weak: 'Отлично! У ученика нет заданий с результатом ниже 80%.'
   },
 
   en: {
@@ -683,7 +713,22 @@ export const translations: Record<Language, Record<string, string>> = {
     subs_btn_delete: 'Delete submission',
     subs_confirm_delete: 'Are you sure you want to delete this submission?',
     subs_grade_ph: 'Enter grade (1-10)',
-    subs_feedback_ph: 'Write feedback and recommendations for the student...'
+    subs_feedback_ph: 'Write feedback and recommendations for the student...',
+
+    // Student Card & Dossier
+    student_card_title: 'Student Dossier & Statistics',
+    student_card_subtitle: 'Complete report of completed activities, grades, and submissions.',
+    student_card_btn_open: 'Student dossier',
+    student_card_tab_exercises: 'Completed lessons',
+    student_card_tab_submissions: 'Submitted assignments',
+    student_card_tab_weak: 'Needs review (<80%)',
+    student_card_kpi_progress: 'Course progress',
+    student_card_kpi_avg_score: 'Average test score',
+    student_card_kpi_avg_grade: 'Average grade',
+    student_card_kpi_answers: 'Correct answers',
+    student_card_no_exercises: 'The student has not completed any activities yet.',
+    student_card_no_submissions: 'The student has not submitted any assignments for review yet.',
+    student_card_no_weak: 'Great! The student has no activities with a score below 80%.'
   }
 };
 

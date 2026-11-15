@@ -144,6 +144,7 @@ const AppContent: React.FC = () => {
       <Navbar
         isInsideExercise={!!selectedActivity}
         onBackToCourse={() => setSelectedActivity(null)}
+        courseData={courseData}
       />
 
       {/* Desktop Header Tab Navigation */}
@@ -247,7 +248,7 @@ const AppContent: React.FC = () => {
               />
             )}
 
-            {currentTab === 'submissions' && <SubmissionsView />}
+            {currentTab === 'submissions' && <SubmissionsView courseData={courseData} />}
 
             {currentTab === 'profile' && (
               <ProfileView courseData={courseData} />
