@@ -16,11 +16,22 @@ import {
   CheckCircle2,
   ShieldCheck,
   BookOpen,
-  Award
+  Award,
+  Key,
+  X
 } from 'lucide-react';
 
 export const AuthView: React.FC = () => {
-  const { loginWithCredentials, registerWithCredentials, loginAs, usersList } = useAuth();
+  const {
+    loginWithCredentials,
+    registerWithCredentials,
+    loginAs,
+    usersList,
+    resetPasswordForEmail,
+    updateUserPassword,
+    isPasswordRecoveryMode,
+    setIsPasswordRecoveryMode
+  } = useAuth();
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -30,6 +41,18 @@ export const AuthView: React.FC = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Recovery modal state
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryStatus, setRecoveryStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  // Set new password state (for recovery mode)
+  const [newPassInput, setNewPassInput] = useState('');
+  const [confirmNewPassInput, setConfirmNewPassInput] = useState('');
+  const [newPassLoading, setNewPassLoading] = useState(false);
+  const [newPassStatus, setNewPassStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
   // Register form state
   const [regName, setRegName] = useState('');
@@ -42,6 +65,53 @@ export const AuthView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryStatus(null);
+    setRecoveryLoading(true);
+    try {
+      const res = await resetPasswordForEmail(recoveryEmail);
+      if (res.success) {
+        setRecoveryStatus({ ok: true, msg: res.message || t('auth_recovery_sent_success') });
+      } else {
+        setRecoveryStatus({ ok: false, msg: res.error || 'Eroare la trimiterea e-mailului' });
+      }
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const handleSetNewPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewPassStatus(null);
+    if (newPassInput.length < 6) {
+      setNewPassStatus({ ok: false, msg: t('auth_err_short_pass') });
+      return;
+    }
+    if (newPassInput !== confirmNewPassInput) {
+      setNewPassStatus({ ok: false, msg: t('auth_err_pass_mismatch') });
+      return;
+    }
+
+    setNewPassLoading(true);
+    try {
+      const res = await updateUserPassword(newPassInput);
+      if (res.success) {
+        setNewPassStatus({ ok: true, msg: t('profile_pass_updated_success') });
+        setTimeout(() => {
+          setIsPasswordRecoveryMode(false);
+          if (typeof window !== 'undefined' && window.history) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }, 1500);
+      } else {
+        setNewPassStatus({ ok: false, msg: res.error || 'Eroare la actualizarea parolei' });
+      }
+    } finally {
+      setNewPassLoading(false);
+    }
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,6 +326,17 @@ export const AuthView: React.FC = () => {
                   />
                   <span>{t('auth_remember_me')}</span>
                 </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryEmail(loginEmail);
+                    setRecoveryStatus(null);
+                    setShowRecoveryModal(true);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                >
+                  {t('auth_forgot_password')}
+                </button>
               </div>
 
               <button
@@ -437,6 +518,169 @@ export const AuthView: React.FC = () => {
       <div className="max-w-md w-full mx-auto text-center pt-4 pb-2 text-[11px] text-slate-300 font-medium drop-shadow relative z-10">
         {t('auth_footer_copyright')}
       </div>
+
+      {/* MODAL 1: FORGOT PASSWORD RECOVERY REQUEST */}
+      {showRecoveryModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Key className="w-5 h-5 text-blue-600" />
+                {t('auth_recovery_modal_title')}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowRecoveryModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              {t('auth_recovery_modal_desc')}
+            </p>
+
+            {recoveryStatus && (
+              <div className={`mb-4 p-3 rounded-2xl text-xs flex items-start gap-2.5 ${
+                recoveryStatus.ok
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                  : 'bg-rose-50 border border-rose-200 text-rose-900'
+              }`}>
+                {recoveryStatus.ok ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                )}
+                <span>{recoveryStatus.msg}</span>
+              </div>
+            )}
+
+            {!recoveryStatus?.ok && (
+              <form onSubmit={handleRecoverySubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                    {t('auth_email_label')}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="email"
+                      value={recoveryEmail}
+                      onChange={e => setRecoveryEmail(e.target.value)}
+                      placeholder={t('auth_email_ph')}
+                      className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-slate-900"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <button
+                    type="submit"
+                    disabled={recoveryLoading}
+                    className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {recoveryLoading ? (
+                      <span>{t('auth_btn_sending_recovery')}</span>
+                    ) : (
+                      <span>{t('auth_btn_send_recovery')}</span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRecoveryModal(false)}
+                    className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    {t('btn_close')}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {recoveryStatus?.ok && (
+              <button
+                type="button"
+                onClick={() => setShowRecoveryModal(false)}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-colors cursor-pointer mt-2"
+              >
+                {t('auth_recovery_back_to_login')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: SET NEW PASSWORD (When arriving from recovery link email) */}
+      {isPasswordRecoveryMode && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-2">
+              <Lock className="w-5 h-5 text-blue-600" />
+              {t('auth_set_new_pass_title')}
+            </h2>
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              {t('auth_set_new_pass_desc')}
+            </p>
+
+            {newPassStatus && (
+              <div className={`mb-4 p-3 rounded-2xl text-xs flex items-start gap-2.5 ${
+                newPassStatus.ok
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                  : 'bg-rose-50 border border-rose-200 text-rose-900'
+              }`}>
+                {newPassStatus.ok ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                )}
+                <span>{newPassStatus.msg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSetNewPasswordSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  {t('profile_new_pass_label')}
+                </label>
+                <input
+                  type="password"
+                  value={newPassInput}
+                  onChange={e => setNewPassInput(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-slate-900"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  {t('profile_confirm_new_pass_label')}
+                </label>
+                <input
+                  type="password"
+                  value={confirmNewPassInput}
+                  onChange={e => setConfirmNewPassInput(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-slate-900"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={newPassLoading}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <span>{t('auth_btn_save_new_pass')}</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

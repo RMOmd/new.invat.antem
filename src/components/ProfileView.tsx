@@ -14,7 +14,10 @@ import {
   Database,
   Calendar,
   CheckCircle2,
-  Clock
+  Clock,
+  Key,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
 
 interface ProfileViewProps {
@@ -22,8 +25,67 @@ interface ProfileViewProps {
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ courseData }) => {
-  const { currentUser, logout, syncAllFromDatabase, isSyncing, lastSyncedAt, allProgress } = useAuth();
+  const {
+    currentUser,
+    logout,
+    syncAllFromDatabase,
+    isSyncing,
+    lastSyncedAt,
+    allProgress,
+    updateUserPassword,
+    resetPasswordForEmail
+  } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+
+  // Password change state
+  const [showChangePass, setShowChangePass] = React.useState(false);
+  const [newPasswordVal, setNewPasswordVal] = React.useState('');
+  const [confirmPasswordVal, setConfirmPasswordVal] = React.useState('');
+  const [passStatus, setPassStatus] = React.useState<{ ok: boolean; msg: string } | null>(null);
+  const [isUpdatingPass, setIsUpdatingPass] = React.useState(false);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassStatus(null);
+    if (newPasswordVal.length < 6) {
+      setPassStatus({ ok: false, msg: t('auth_err_short_pass') });
+      return;
+    }
+    if (newPasswordVal !== confirmPasswordVal) {
+      setPassStatus({ ok: false, msg: t('auth_err_pass_mismatch') });
+      return;
+    }
+    setIsUpdatingPass(true);
+    try {
+      const res = await updateUserPassword(newPasswordVal);
+      if (res.success) {
+        setPassStatus({ ok: true, msg: t('profile_pass_updated_success') });
+        setNewPasswordVal('');
+        setConfirmPasswordVal('');
+        setTimeout(() => setShowChangePass(false), 2000);
+      } else {
+        setPassStatus({ ok: false, msg: res.error || 'Eroare la actualizarea parolei' });
+      }
+    } finally {
+      setIsUpdatingPass(false);
+    }
+  };
+
+  const handleSendRecoveryEmail = async () => {
+    if (!currentUser?.email) return;
+    setPassStatus(null);
+    setIsUpdatingPass(true);
+    try {
+      const res = await resetPasswordForEmail(currentUser.email);
+      if (res.success) {
+        setPassStatus({ ok: true, msg: res.message || t('auth_recovery_sent_success') });
+      } else {
+        setPassStatus({ ok: false, msg: res.error || 'Eroare' });
+      }
+    } finally {
+      setIsUpdatingPass(false);
+    }
+  };
 
   const allActivities = courseData.sections.flatMap(s => s.activities);
   const totalActivities = allActivities.length;
@@ -114,6 +176,95 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ courseData }) => {
           <LogOut className="w-4 h-4" />
           {t('btn_logout')}
         </button>
+      </div>
+
+      {/* Password & Security Card */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <Key className="w-4 h-4 text-blue-600" />
+            {t('profile_security_title')}
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              setShowChangePass(!showChangePass);
+              setPassStatus(null);
+            }}
+            className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+          >
+            {showChangePass ? t('btn_close') : t('profile_btn_change_pass')}
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500 leading-relaxed">
+          {t('profile_security_desc')}
+        </p>
+
+        {passStatus && (
+          <div className={`p-3 rounded-2xl text-xs flex items-start gap-2.5 ${
+            passStatus.ok
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+              : 'bg-rose-50 border border-rose-200 text-rose-900'
+          }`}>
+            {passStatus.ok ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            )}
+            <span>{passStatus.msg}</span>
+          </div>
+        )}
+
+        {showChangePass && (
+          <form onSubmit={handleUpdatePassword} className="space-y-3 pt-2 border-t border-slate-100">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {t('profile_new_pass_label')}
+              </label>
+              <input
+                type="password"
+                value={newPasswordVal}
+                onChange={e => setNewPasswordVal(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {t('profile_confirm_new_pass_label')}
+              </label>
+              <input
+                type="password"
+                value={confirmPasswordVal}
+                onChange={e => setConfirmPasswordVal(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                type="submit"
+                disabled={isUpdatingPass}
+                className="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {t('profile_btn_update_pass')}
+              </button>
+              <button
+                type="button"
+                disabled={isUpdatingPass}
+                onClick={handleSendRecoveryEmail}
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Trimite link resetare pe e-mail
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Language Preferences */}

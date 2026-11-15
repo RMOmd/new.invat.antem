@@ -25,6 +25,10 @@ interface AuthContextType {
   createNewUser: (name: string, email: string, role: UserRole, password?: string) => UserProfile;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  updateUserPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  isPasswordRecoveryMode: boolean;
+  setIsPasswordRecoveryMode: (active: boolean) => void;
   refreshUsersList: () => Promise<void>;
   refreshSubmissions: () => Promise<void>;
   syncAllFromDatabase: () => Promise<void>;
@@ -226,6 +230,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [isPasswordRecoveryMode, setIsPasswordRecoveryMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.hash.includes('type=recovery');
+    }
+    return false;
+  });
 
   // Sync users list from Supabase if currentUser is admin
   const refreshUsersList = async () => {
@@ -405,8 +415,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const supabase = getSupabase();
     let subsChannel: any = null;
     let progChannel: any = null;
+    let authSub: any = null;
 
     if (supabase) {
+      try {
+        const { data } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            setIsPasswordRecoveryMode(true);
+          }
+        });
+        authSub = data?.subscription;
+      } catch (e) {
+        // ignore
+      }
+
       subsChannel = supabase
         .channel('submissions_realtime_sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
@@ -427,6 +449,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('online', handleOnline);
       clearInterval(interval);
+      if (authSub && typeof authSub.unsubscribe === 'function') {
+        authSub.unsubscribe();
+      }
       if (supabase) {
         if (subsChannel) supabase.removeChannel(subsChannel);
         if (progChannel) supabase.removeChannel(progChannel);
@@ -671,6 +696,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newUser;
   };
 
+  const resetPasswordForEmail = async (email: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'Introduceți o adresă de e-mail validă.' };
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const redirectUrl = window.location.origin + window.location.pathname;
+        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: redirectUrl
+        });
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        return {
+          success: true,
+          message: 'Linkul de resetare a parolei a fost trimis pe e-mail! Verificați căsuța poștală și folderul Spam.'
+        };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Eroare la trimiterea e-mailului' };
+      }
+    }
+
+    const matched = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+    if (!matched) {
+      return {
+        success: false,
+        error: 'Nu a fost găsit niciun cont cu această adresă de e-mail.'
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Cont găsit în mod local. Pentru conturile demo/locale parola este "password123" sau "demo123".'
+    };
+  };
+
+  const updateUserPassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanPass = newPassword.trim();
+    if (cleanPass.length < 6) {
+      return { success: false, error: 'Parola trebuie să conțină cel puțin 6 caractere.' };
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: cleanPass
+        });
+        if (error) {
+          return { success: false, error: error.message };
+        }
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Eroare la actualizarea parolei' };
+      }
+    }
+
+    if (currentUser) {
+      const updatedUser: UserProfile = { ...currentUser, password: cleanPass };
+      setCurrentUser(updatedUser);
+      currentUserRef.current = updatedUser;
+      localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedUser));
+
+      setUsersList(prev => {
+        const updated = prev.map(u => (u.id === currentUser.id ? { ...u, password: cleanPass } : u));
+        localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
+
+    return { success: true };
+  };
+
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem(LOCAL_CURRENT_USER_KEY);
@@ -851,6 +951,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createNewUser,
         changeUserRole,
         deleteUser,
+        resetPasswordForEmail,
+        updateUserPassword,
+        isPasswordRecoveryMode,
+        setIsPasswordRecoveryMode,
         refreshUsersList,
         refreshSubmissions: syncAllFromDatabase,
         syncAllFromDatabase,

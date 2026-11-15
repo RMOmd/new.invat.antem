@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Key,
+  Lock,
   Link as LinkIcon,
   UploadCloud,
   Sparkles
@@ -43,12 +44,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
     syncLocalUsersToSupabase,
     logout,
     syncAllFromDatabase,
-    isSyncing: isMasterSyncing
+    isSyncing: isMasterSyncing,
+    updateUserPassword,
+    resetPasswordForEmail
   } = useAuth();
   const { t } = useLanguage();
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+
+  // Profile password change state
+  const [showChangePass, setShowChangePass] = useState(false);
+  const [newPasswordVal, setNewPasswordVal] = useState('');
+  const [confirmPasswordVal, setConfirmPasswordVal] = useState('');
+  const [passStatus, setPassStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [isUpdatingPass, setIsUpdatingPass] = useState(false);
 
   // Admin search state
   const [adminSearch, setAdminSearch] = useState('');
@@ -62,6 +72,49 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
   const [isTesting, setIsTesting] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassStatus(null);
+    if (newPasswordVal.length < 6) {
+      setPassStatus({ ok: false, msg: t('auth_err_short_pass') });
+      return;
+    }
+    if (newPasswordVal !== confirmPasswordVal) {
+      setPassStatus({ ok: false, msg: t('auth_err_pass_mismatch') });
+      return;
+    }
+    setIsUpdatingPass(true);
+    try {
+      const res = await updateUserPassword(newPasswordVal);
+      if (res.success) {
+        setPassStatus({ ok: true, msg: t('profile_pass_updated_success') });
+        setNewPasswordVal('');
+        setConfirmPasswordVal('');
+        setTimeout(() => setShowChangePass(false), 2000);
+      } else {
+        setPassStatus({ ok: false, msg: res.error || 'Eroare' });
+      }
+    } finally {
+      setIsUpdatingPass(false);
+    }
+  };
+
+  const handleSendRecoveryEmail = async () => {
+    if (!currentUser?.email) return;
+    setPassStatus(null);
+    setIsUpdatingPass(true);
+    try {
+      const res = await resetPasswordForEmail(currentUser.email);
+      if (res.success) {
+        setPassStatus({ ok: true, msg: res.message || t('auth_recovery_sent_success') });
+      } else {
+        setPassStatus({ ok: false, msg: res.error || 'Eroare' });
+      }
+    } finally {
+      setIsUpdatingPass(false);
+    }
+  };
 
   const handleTestConnection = async () => {
     setIsTesting(true);
@@ -269,6 +322,92 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Password / Security section */}
+            <div className="mb-5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Key className="w-4 h-4 text-blue-600" />
+                  {t('profile_security_title')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePass(!showChangePass);
+                    setPassStatus(null);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                >
+                  {showChangePass ? t('btn_close') : t('profile_btn_change_pass')}
+                </button>
+              </div>
+
+              {passStatus && (
+                <div className={`mt-3 p-2.5 rounded-xl text-xs flex items-start gap-2 ${
+                  passStatus.ok
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                    : 'bg-rose-50 border border-rose-200 text-rose-900'
+                }`}>
+                  {passStatus.ok ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  )}
+                  <span>{passStatus.msg}</span>
+                </div>
+              )}
+
+              {showChangePass && (
+                <form onSubmit={handleUpdatePassword} className="mt-3 space-y-2.5 pt-2 border-t border-slate-200">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      {t('profile_new_pass_label')}
+                    </label>
+                    <input
+                      type="password"
+                      value={newPasswordVal}
+                      onChange={e => setNewPasswordVal(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      {t('profile_confirm_new_pass_label')}
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPasswordVal}
+                      onChange={e => setConfirmPasswordVal(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={isUpdatingPass}
+                      className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {t('profile_btn_update_pass')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isUpdatingPass}
+                      onClick={handleSendRecoveryEmail}
+                      title="Trimite link de resetare pe e-mail"
+                      className="py-2 px-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
+                    >
+                      Reset pe e-mail
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
 
             <div className="space-y-2">
