@@ -285,7 +285,7 @@ export const AuthView: React.FC = () => {
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                <label htmlFor="login-email" className="block text-xs font-bold text-slate-800 mb-1.5 cursor-pointer">
                   {t('auth_email_label')}
                 </label>
                 <div className="relative">
@@ -293,6 +293,8 @@ export const AuthView: React.FC = () => {
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
+                    id="login-email"
+                    name="email"
                     type="email"
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
@@ -306,7 +308,7 @@ export const AuthView: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-slate-800">
+                  <label htmlFor="login-password" className="block text-xs font-bold text-slate-800 cursor-pointer">
                     {t('auth_pass_label')}
                   </label>
                   <span className="text-[11px] text-slate-500 font-medium">
@@ -318,6 +320,8 @@ export const AuthView: React.FC = () => {
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
+                    id="login-password"
+                    name="password"
                     type={showLoginPassword ? 'text' : 'password'}
                     value={loginPassword}
                     onChange={e => setLoginPassword(e.target.value)}
@@ -337,8 +341,10 @@ export const AuthView: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between text-xs text-slate-700 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none font-medium">
+                <label htmlFor="login-remember-me" className="flex items-center gap-2 cursor-pointer select-none font-medium">
                   <input
+                    id="login-remember-me"
+                    name="rememberMe"
                     type="checkbox"
                     checked={rememberMe}
                     onChange={e => setRememberMe(e.target.checked)}
@@ -418,7 +424,7 @@ export const AuthView: React.FC = () => {
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
+                <label htmlFor="reg-name" className="block text-xs font-bold text-slate-800 mb-1 cursor-pointer">
                   {t('auth_name_label')}
                 </label>
                 <div className="relative">
@@ -426,6 +432,8 @@ export const AuthView: React.FC = () => {
                     <User className="w-4 h-4" />
                   </div>
                   <input
+                    id="reg-name"
+                    name="name"
                     type="text"
                     value={regName}
                     onChange={e => setRegName(e.target.value)}
@@ -438,7 +446,7 @@ export const AuthView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
+                <label htmlFor="reg-email" className="block text-xs font-bold text-slate-800 mb-1 cursor-pointer">
                   {t('auth_email_label')}
                 </label>
                 <div className="relative">
@@ -446,6 +454,8 @@ export const AuthView: React.FC = () => {
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
+                    id="reg-email"
+                    name="email"
                     type="email"
                     value={regEmail}
                     onChange={e => setRegEmail(e.target.value)}
@@ -459,11 +469,13 @@ export const AuthView: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                  <label htmlFor="reg-password" className="block text-xs font-bold text-slate-800 mb-1 cursor-pointer">
                     {t('auth_pass_label')}
                   </label>
                   <div className="relative">
                     <input
+                      id="reg-password"
+                      name="password"
                       type={showRegPassword ? 'text' : 'password'}
                       value={regPassword}
                       onChange={e => setRegPassword(e.target.value)}
@@ -476,11 +488,13 @@ export const AuthView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                  <label htmlFor="reg-confirm-password" className="block text-xs font-bold text-slate-800 mb-1 cursor-pointer">
                     {t('auth_confirm_pass_label')}
                   </label>
                   <div className="relative">
                     <input
+                      id="reg-confirm-password"
+                      name="confirmPassword"
                       type={showRegPassword ? 'text' : 'password'}
                       value={regConfirmPassword}
                       onChange={e => setRegConfirmPassword(e.target.value)}
@@ -582,7 +596,7 @@ export const AuthView: React.FC = () => {
             {!recoveryStatus?.ok && (
               <form onSubmit={handleRecoverySubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  <label htmlFor="recovery-email" className="block text-xs font-bold text-slate-800 mb-1.5 cursor-pointer">
                     {t('auth_email_label')}
                   </label>
                   <div className="relative">
@@ -590,10 +604,13 @@ export const AuthView: React.FC = () => {
                       <Mail className="w-4 h-4" />
                     </div>
                     <input
+                      id="recovery-email"
+                      name="recoveryEmail"
                       type="email"
                       value={recoveryEmail}
                       onChange={e => setRecoveryEmail(e.target.value)}
                       placeholder={t('auth_email_ph')}
+                      autoComplete="email"
                       className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-slate-900"
                       required
                     />
@@ -666,28 +683,34 @@ export const AuthView: React.FC = () => {
 
             <form onSubmit={handleSetNewPasswordSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                <label htmlFor="modal-new-pass-input" className="block text-xs font-bold text-slate-800 mb-1.5 cursor-pointer">
                   {t('profile_new_pass_label')}
                 </label>
                 <input
+                  id="modal-new-pass-input"
+                  name="newPassword"
                   type="password"
                   value={newPassInput}
                   onChange={e => setNewPassInput(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-slate-900"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                <label htmlFor="modal-confirm-new-pass-input" className="block text-xs font-bold text-slate-800 mb-1.5 cursor-pointer">
                   {t('profile_confirm_new_pass_label')}
                 </label>
                 <input
+                  id="modal-confirm-new-pass-input"
+                  name="confirmNewPassword"
                   type="password"
                   value={confirmNewPassInput}
                   onChange={e => setConfirmNewPassInput(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-slate-900"
                   required
                 />

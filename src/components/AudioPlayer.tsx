@@ -106,6 +106,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title }) => {
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs text-slate-500 font-mono w-9">{formatTime(currentTime)}</span>
         <input
+          name="audioProgress"
+          aria-label="Audio progress"
           type="range"
           min={0}
           max={duration || 100}

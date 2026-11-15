@@ -219,28 +219,34 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ courseData }) => {
         {showChangePass && (
           <form onSubmit={handleUpdatePassword} className="space-y-3 pt-2 border-t border-slate-100">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label htmlFor="profile-new-pass" className="block text-xs font-bold text-slate-700 mb-1 cursor-pointer">
                 {t('profile_new_pass_label')}
               </label>
               <input
+                id="profile-new-pass"
+                name="newPassword"
                 type="password"
                 value={newPasswordVal}
                 onChange={e => setNewPasswordVal(e.target.value)}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label htmlFor="profile-confirm-new-pass" className="block text-xs font-bold text-slate-700 mb-1 cursor-pointer">
                 {t('profile_confirm_new_pass_label')}
               </label>
               <input
+                id="profile-confirm-new-pass"
+                name="confirmNewPassword"
                 type="password"
                 value={confirmPasswordVal}
                 onChange={e => setConfirmPasswordVal(e.target.value)}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                 required
               />

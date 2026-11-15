@@ -365,28 +365,34 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
               {showChangePass && (
                 <form onSubmit={handleUpdatePassword} className="mt-3 space-y-2.5 pt-2 border-t border-slate-200">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label htmlFor="navbar-new-pass" className="block text-[11px] font-bold text-slate-600 mb-1 cursor-pointer">
                       {t('profile_new_pass_label')}
                     </label>
                     <input
+                      id="navbar-new-pass"
+                      name="newPassword"
                       type="password"
                       value={newPasswordVal}
                       onChange={e => setNewPasswordVal(e.target.value)}
                       placeholder="••••••••"
+                      autoComplete="new-password"
                       className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label htmlFor="navbar-confirm-new-pass" className="block text-[11px] font-bold text-slate-600 mb-1 cursor-pointer">
                       {t('profile_confirm_new_pass_label')}
                     </label>
                     <input
+                      id="navbar-confirm-new-pass"
+                      name="confirmNewPassword"
                       type="password"
                       value={confirmPasswordVal}
                       onChange={e => setConfirmPasswordVal(e.target.value)}
                       placeholder="••••••••"
+                      autoComplete="new-password"
                       className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                       required
                     />
@@ -513,6 +519,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
                 <div className="relative mb-3 shrink-0">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
+                    id="admin-search-users"
+                    name="adminSearch"
                     type="text"
                     value={adminSearch}
                     onChange={e => setAdminSearch(e.target.value)}
@@ -653,29 +661,35 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
 
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1 flex items-center gap-1.5">
+                    <label htmlFor="admin-sb-url" className="text-xs font-bold text-slate-700 block mb-1 flex items-center gap-1.5 cursor-pointer">
                       <LinkIcon className="w-3.5 h-3.5 text-slate-500" />
                       {t('sb_url_label')}
                     </label>
                     <input
+                      id="admin-sb-url"
+                      name="supabaseUrl"
                       type="text"
                       value={sbUrl}
                       onChange={e => setSbUrl(e.target.value)}
                       placeholder="https://xyzcompany.supabase.co"
+                      autoComplete="url"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1 flex items-center gap-1.5">
+                    <label htmlFor="admin-sb-key" className="text-xs font-bold text-slate-700 block mb-1 flex items-center gap-1.5 cursor-pointer">
                       <Key className="w-3.5 h-3.5 text-slate-500" />
                       {t('sb_anon_label')}
                     </label>
                     <input
+                      id="admin-sb-key"
+                      name="supabaseKey"
                       type="password"
                       value={sbKey}
                       onChange={e => setSbKey(e.target.value)}
                       placeholder="eyJhbGciOi..."
+                      autoComplete="off"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>

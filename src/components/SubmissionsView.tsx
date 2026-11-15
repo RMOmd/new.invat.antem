@@ -357,10 +357,12 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
 
             <div className="space-y-3 text-xs text-slate-600">
               <div>
-                <label className="block font-bold text-slate-800 mb-1">
+                <label htmlFor="tg-bot-token" className="block font-bold text-slate-800 mb-1 cursor-pointer">
                   1. Telegram Bot Token:
                 </label>
                 <input
+                  id="tg-bot-token"
+                  name="tgBotToken"
                   type="text"
                   value={tgToken}
                   onChange={e => setTgToken(e.target.value)}
@@ -373,10 +375,12 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
               </div>
 
               <div>
-                <label className="block font-bold text-slate-800 mb-1">
+                <label htmlFor="tg-chat-id" className="block font-bold text-slate-800 mb-1 cursor-pointer">
                   2. Chat ID (ID-ul dvs. personal sau grup):
                 </label>
                 <input
+                  id="tg-chat-id"
+                  name="tgChatId"
                   type="text"
                   value={tgChatId}
                   onChange={e => setTgChatId(e.target.value)}
@@ -659,8 +663,10 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
                           <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-200 space-y-3">
                             <div className="flex items-center justify-between flex-wrap gap-2">
                               <div className="flex items-center gap-3">
-                                <label className="text-xs font-bold text-purple-900">{t('subs_grade_label')} (1 - 10):</label>
+                                <label htmlFor={`sub-grade-${sub.id}`} className="text-xs font-bold text-purple-900 cursor-pointer">{t('subs_grade_label')} (1 - 10):</label>
                                 <input
+                                  id={`sub-grade-${sub.id}`}
+                                  name="grade"
                                   type="number"
                                   min={1}
                                   max={10}
@@ -711,8 +717,10 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
                             )}
 
                             <div>
-                              <label className="text-xs font-bold text-purple-900 block mb-1">{t('subs_feedback_label')}</label>
+                              <label htmlFor={`sub-feedback-${sub.id}`} className="text-xs font-bold text-purple-900 block mb-1 cursor-pointer">{t('subs_feedback_label')}</label>
                               <textarea
+                                id={`sub-feedback-${sub.id}`}
+                                name="teacherFeedback"
                                 rows={5}
                                 value={feedbackInput}
                                 onChange={e => setFeedbackInput(e.target.value)}

@@ -343,6 +343,8 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                   <div className="relative mb-3">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
+                      id="student-card-search"
+                      name="studentCardSearch"
                       type="text"
                       value={searchFilter}
                       onChange={e => setSearchFilter(e.target.value)}

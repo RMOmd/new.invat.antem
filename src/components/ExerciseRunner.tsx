@@ -884,6 +884,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
+                  id="gemini-api-key-input"
+                  name="geminiApiKey"
                   type="password"
                   value={keyInput}
                   onChange={e => setKeyInput(e.target.value)}
