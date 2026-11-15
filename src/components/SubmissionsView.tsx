@@ -4,7 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { AssignmentSubmission } from '../types/course';
 import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
 import { getTelegramConfig, saveTelegramConfig, isTelegramConfigured, sendTelegramMessage, notifyReviewedSubmission } from '../lib/telegram';
-import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw, Bell, Settings, Check, X, ChevronDown, ChevronUp, ChevronsUpDown, Filter } from 'lucide-react';
+import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw, Bell, Settings, Check, X, ChevronDown, ChevronUp, ChevronsUpDown, Filter, FileEdit } from 'lucide-react';
 
 interface ParsedFeedback {
   summary: string;
@@ -738,9 +738,14 @@ export const SubmissionsView: React.FC = () => {
                               setFeedbackInput(sub.teacherFeedback || '');
                               setAiError(null);
                             }}
-                            className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 hover:text-purple-900 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98]"
                           >
-                            {t('subs_btn_review')}
+                            <FileEdit className="w-3.5 h-3.5 text-purple-600" />
+                            <span>
+                              {sub.status === 'reviewed'
+                                ? t('subs_btn_edit_review')
+                                : t('subs_btn_review')}
+                            </span>
                           </button>
                         )}
                       </div>

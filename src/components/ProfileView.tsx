@@ -182,3 +182,4 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ courseData }) => {
     </div>
   );
 };
+
