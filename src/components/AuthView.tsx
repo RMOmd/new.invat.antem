@@ -180,37 +180,57 @@ export const AuthView: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen bg-cover bg-center bg-fixed flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 relative"
+      className="min-h-screen bg-cover bg-[15%_center] sm:bg-[20%_center] lg:bg-left bg-fixed flex flex-col justify-between py-4 sm:py-6 px-4 sm:px-8 lg:px-12 relative overflow-x-hidden"
       style={{
-        backgroundImage: "linear-gradient(to bottom, rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0.75)), url('media/stefan_cel_mare_bg.jpg')"
+        backgroundImage: "linear-gradient(to right, rgba(15, 23, 42, 0.15) 0%, rgba(15, 23, 42, 0.40) 45%, rgba(15, 23, 42, 0.78) 75%, rgba(15, 23, 42, 0.88) 100%), url('media/stefan_cel_mare_bg.jpg')"
       }}
     >
       {/* Top Header / Language Switcher & Branding */}
-      <div className="max-w-md w-full mx-auto relative z-10">
-        <div className="flex items-center justify-end mb-2">
-          <div className="bg-slate-900/60 backdrop-blur-md p-1 rounded-2xl border border-white/10 shadow-sm">
-            <LanguageSwitcher />
-          </div>
+      <div className="max-w-7xl w-full mx-auto flex items-center justify-between relative z-20">
+        <div className="inline-flex items-center gap-2 bg-slate-900/75 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-amber-400/40 shadow-lg">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span className="text-[11px] sm:text-xs font-bold text-amber-300 tracking-wider uppercase">
+            {t('auth_badge')}
+          </span>
         </div>
 
-        <div className="text-center pt-1 pb-4">
-          <div className="inline-flex items-center justify-center gap-2 mb-2 bg-slate-900/70 backdrop-blur-md px-4 py-1.5 rounded-full border border-amber-400/40 shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-            <span className="text-xs font-bold text-amber-300 tracking-wide uppercase">
-              {t('auth_badge')}
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md">
-            {t('auth_title')}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-200 mt-1.5 max-w-md mx-auto drop-shadow leading-relaxed font-medium">
-            {t('auth_subtitle')}
-          </p>
+        <div className="bg-slate-900/75 backdrop-blur-md p-1 rounded-2xl border border-white/15 shadow-sm">
+          <LanguageSwitcher />
         </div>
       </div>
 
-      {/* Main Auth Card */}
-      <div className="max-w-md w-full mx-auto bg-white rounded-3xl shadow-2xl shadow-slate-950/60 border border-white/80 overflow-hidden relative z-10">
+      {/* Main Two-Column Layout (Stefan on left, Login card on right) */}
+      <div className="max-w-7xl w-full mx-auto my-auto py-6 sm:py-8 lg:py-12 flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12 relative z-10">
+        
+        {/* Left Column: Hero branding with clear visibility of Stefan cel Mare */}
+        <div className="w-full lg:max-w-xl text-center lg:text-left text-white space-y-4">
+          <div className="inline-block">
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-300/90 bg-amber-500/10 border border-amber-400/30 px-3.5 py-1 rounded-full shadow-xs">
+              Ștefan cel Mare • ANTEM
+            </span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-xl leading-tight">
+            {t('auth_title')}
+          </h1>
+          <p className="text-sm sm:text-base text-blue-100/90 max-w-lg drop-shadow leading-relaxed font-medium mx-auto lg:mx-0">
+            {t('auth_subtitle')}
+          </p>
+
+          {/* Quick value badges on desktop */}
+          <div className="hidden lg:grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 text-xs">
+            <div className="flex items-center gap-2.5 bg-slate-900/60 backdrop-blur-md border border-white/10 px-3.5 py-2.5 rounded-2xl shadow-sm">
+              <BookOpen className="w-4 h-4 text-amber-300 shrink-0" />
+              <span className="text-slate-100 font-semibold">{t('auth_footer_units')}</span>
+            </div>
+            <div className="flex items-center gap-2.5 bg-slate-900/60 backdrop-blur-md border border-white/10 px-3.5 py-2.5 rounded-2xl shadow-sm">
+              <Sparkles className="w-4 h-4 text-blue-300 shrink-0" />
+              <span className="text-slate-100 font-semibold">{t('auth_footer_auto_save')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Main Auth Card */}
+        <div className="w-full max-w-md lg:max-w-sm xl:max-w-md shrink-0 lg:ml-auto bg-white rounded-3xl shadow-2xl shadow-slate-950/70 border border-white/90 overflow-hidden relative z-10">
         {/* Tab Switcher */}
         <div className="flex border-b border-slate-200 bg-slate-100/90 p-1.5">
           <button
@@ -514,8 +534,11 @@ export const AuthView: React.FC = () => {
         </div>
       </div>
 
+      {/* Close Main Two-Column Layout Container */}
+      </div>
+
       {/* Footer copyright */}
-      <div className="max-w-md w-full mx-auto text-center pt-4 pb-2 text-[11px] text-slate-300 font-medium drop-shadow relative z-10">
+      <div className="max-w-7xl w-full mx-auto text-center lg:text-right pt-4 pb-2 text-[11px] text-slate-300/85 font-medium drop-shadow relative z-10">
         {t('auth_footer_copyright')}
       </div>
 
