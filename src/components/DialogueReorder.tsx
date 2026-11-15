@@ -6,6 +6,8 @@ interface DialogueReorderProps {
   orderItems: string[];
   checked: boolean;
   savedOrder?: Record<string | number, string> | string[];
+  isCompleted?: boolean;
+  savedScore?: number;
   onOrderChange?: (order: string[]) => void;
   onCheckStateChange: (isAllCorrect: boolean, correctCount: number) => void;
   hintTrigger: number;
@@ -18,50 +20,69 @@ interface OrderItem {
 
 const buildInitialItems = (
   listItems: string[],
-  saved?: Record<string | number, string> | string[]
+  saved?: Record<string | number, string> | string[],
+  isCompleted?: boolean,
+  savedScore?: number
 ): OrderItem[] => {
   const defaultList: OrderItem[] = listItems.map((text, origIdx) => ({ origIdx, text }));
-  if (!saved || (Array.isArray(saved) && saved.length === 0) || (!Array.isArray(saved) && Object.keys(saved).length === 0)) {
-    if (defaultList.length > 1) {
-      return [...defaultList.slice(1), defaultList[0]];
+
+  const hasSavedAnswers = saved && (
+    Array.isArray(saved) 
+      ? saved.length > 0 
+      : Object.keys(saved).length > 0 && Object.values(saved).some(v => typeof v === 'string' && v.trim().length > 0)
+  );
+
+  // 1. If explicit answers are saved, restore them
+  if (hasSavedAnswers) {
+    const usedIndices = new Set<number>();
+    const restored: (OrderItem | null)[] = [];
+
+    for (let i = 0; i < listItems.length; i++) {
+      const savedText = Array.isArray(saved) ? saved[i] : (saved[i] || saved[String(i)]);
+      if (savedText) {
+        const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && item.text === savedText);
+        if (foundIdx !== -1) {
+          restored.push(defaultList[foundIdx]);
+          usedIndices.add(foundIdx);
+          continue;
+        }
+      }
+      restored.push(null);
     }
+
+    let unusedIdx = 0;
+    return restored.map(slot => {
+      if (slot) return slot;
+      while (usedIndices.has(unusedIdx) && unusedIdx < defaultList.length) {
+        unusedIdx++;
+      }
+      if (unusedIdx < defaultList.length) {
+        usedIndices.add(unusedIdx);
+        return defaultList[unusedIdx++];
+      }
+      return defaultList[0];
+    });
+  }
+
+  // 2. If no saved order stored, but the exercise was completed with high score (legacy saves where userAnswers was {}):
+  // Restore the correct solved order so it's not shown as red errors!
+  if (isCompleted && (savedScore === undefined || savedScore === 100 || savedScore >= 80)) {
     return defaultList;
   }
 
-  const usedIndices = new Set<number>();
-  const restored: (OrderItem | null)[] = [];
-
-  for (let i = 0; i < listItems.length; i++) {
-    const savedText = Array.isArray(saved) ? saved[i] : (saved[i] || saved[String(i)]);
-    if (savedText) {
-      const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && item.text === savedText);
-      if (foundIdx !== -1) {
-        restored.push(defaultList[foundIdx]);
-        usedIndices.add(foundIdx);
-        continue;
-      }
-    }
-    restored.push(null);
+  // 3. Otherwise (uncompleted), start with scrambled order
+  if (defaultList.length > 1) {
+    return [...defaultList.slice(1), defaultList[0]];
   }
-
-  let unusedIdx = 0;
-  return restored.map(slot => {
-    if (slot) return slot;
-    while (usedIndices.has(unusedIdx) && unusedIdx < defaultList.length) {
-      unusedIdx++;
-    }
-    if (unusedIdx < defaultList.length) {
-      usedIndices.add(unusedIdx);
-      return defaultList[unusedIdx++];
-    }
-    return defaultList[0];
-  });
+  return defaultList;
 };
 
 export const DialogueReorder: React.FC<DialogueReorderProps> = ({
   orderItems,
   checked,
   savedOrder,
+  isCompleted,
+  savedScore,
   onOrderChange,
   onCheckStateChange,
   hintTrigger
@@ -69,13 +90,13 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
   const { t } = useLanguage();
   // Initialize with saved order if available, otherwise deterministic shift
   const [items, setItems] = useState<OrderItem[]>(() => {
-    return buildInitialItems(orderItems, savedOrder);
+    return buildInitialItems(orderItems, savedOrder, isCompleted, savedScore);
   });
 
-  // Re-sync whenever orderItems or savedOrder change
+  // Re-sync whenever orderItems, savedOrder, or completion status change
   useEffect(() => {
-    setItems(buildInitialItems(orderItems, savedOrder));
-  }, [orderItems, savedOrder]);
+    setItems(buildInitialItems(orderItems, savedOrder, isCompleted, savedScore));
+  }, [orderItems, savedOrder, isCompleted, savedScore]);
 
   // Notify parent of items order
   useEffect(() => {

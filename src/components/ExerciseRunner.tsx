@@ -55,7 +55,20 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const [answers, setAnswers] = useState<Record<number, string>>(() => {
-    return savedProgress?.userAnswers || {};
+    const saved = savedProgress?.userAnswers;
+    if (saved && Object.keys(saved).length > 0) {
+      return saved;
+    }
+    if (savedProgress?.completed && (savedProgress.score === undefined || savedProgress.score === 100 || savedProgress.score >= 80) && gaps.length > 0) {
+      const fallback: Record<number, string> = {};
+      gaps.forEach(g => {
+        if (g.correctAnswers && g.correctAnswers.length > 0) {
+          fallback[g.gapIndex] = g.correctAnswers[0];
+        }
+      });
+      return fallback;
+    }
+    return {};
   });
 
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(() => {
@@ -65,6 +78,16 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         restoredQuiz[Number(k)] = Number(v);
       });
       return restoredQuiz;
+    }
+    if (savedProgress?.completed && (savedProgress.score === undefined || savedProgress.score === 100 || savedProgress.score >= 80) && quizQuestions.length > 0) {
+      const fallback: Record<number, number> = {};
+      quizQuestions.forEach(q => {
+        const correctOpt = q.options.find(o => o.isCorrect);
+        if (correctOpt) {
+          fallback[q.id] = correctOpt.ansIdx;
+        }
+      });
+      return fallback;
     }
     return {};
   });
@@ -94,7 +117,11 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   // Dialogue ordering state
   const [orderAnswers, setOrderAnswers] = useState<string[]>([]);
   const [orderCorrectCount, setOrderCorrectCount] = useState<number>(() => {
-    return savedProgress?.correctCount || 0;
+    if (savedProgress?.correctCount !== undefined) return savedProgress.correctCount;
+    if (savedProgress?.completed && (savedProgress.score === undefined || savedProgress.score === 100 || savedProgress.score >= 80)) {
+      return orderItems.length;
+    }
+    return 0;
   });
   const [orderIsAllCorrect, setOrderIsAllCorrect] = useState(false);
   const [orderHintTrigger, setOrderHintTrigger] = useState(0);
@@ -102,7 +129,11 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   // Matching pairs state
   const [matchingAnswers, setMatchingAnswers] = useState<string[]>([]);
   const [matchingCorrectCount, setMatchingCorrectCount] = useState<number>(() => {
-    return savedProgress?.correctCount || 0;
+    if (savedProgress?.correctCount !== undefined) return savedProgress.correctCount;
+    if (savedProgress?.completed && (savedProgress.score === undefined || savedProgress.score === 100 || savedProgress.score >= 80)) {
+      return matchingPairs.length;
+    }
+    return 0;
   });
   const [matchingIsAllCorrect, setMatchingIsAllCorrect] = useState(false);
   const [matchingHintTrigger, setMatchingHintTrigger] = useState(0);
@@ -113,17 +144,43 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     const isNewActivity = prevActivityIdRef.current !== activity.id;
     prevActivityIdRef.current = activity.id;
 
-    setAnswers(savedProgress?.userAnswers || {});
+    const saved = savedProgress?.userAnswers;
+    const hasSavedAnswers = saved && Object.keys(saved).length > 0 && Object.values(saved).some(v => v !== null && v !== undefined && String(v).trim().length > 0);
+    const isCompletedGood = !!savedProgress?.completed && (savedProgress.score === undefined || savedProgress.score === 100 || savedProgress.score >= 80);
+
+    if (hasSavedAnswers) {
+      setAnswers(saved!);
+    } else if (isCompletedGood && gaps.length > 0) {
+      const fallback: Record<number, string> = {};
+      gaps.forEach(g => {
+        if (g.correctAnswers && g.correctAnswers.length > 0) {
+          fallback[g.gapIndex] = g.correctAnswers[0];
+        }
+      });
+      setAnswers(fallback);
+    } else {
+      setAnswers({});
+    }
+
     setChecked(!!savedProgress?.completed);
     setSubmissionText(savedProgress?.userAnswers?.[0] || (savedProgress?.userAnswers as any)?.['0'] || '');
     setSubmittedSuccess(!!savedProgress?.completed && isAssignmentType);
 
-    if (savedProgress?.userAnswers && quizQuestions.length > 0) {
+    if (hasSavedAnswers && quizQuestions.length > 0) {
       const restoredQuiz: Record<number, number> = {};
-      Object.entries(savedProgress.userAnswers).forEach(([k, v]) => {
+      Object.entries(saved!).forEach(([k, v]) => {
         restoredQuiz[Number(k)] = Number(v);
       });
       setQuizAnswers(restoredQuiz);
+    } else if (isCompletedGood && quizQuestions.length > 0) {
+      const fallback: Record<number, number> = {};
+      quizQuestions.forEach(q => {
+        const correctOpt = q.options.find(o => o.isCorrect);
+        if (correctOpt) {
+          fallback[q.id] = correctOpt.ansIdx;
+        }
+      });
+      setQuizAnswers(fallback);
     } else if (isNewActivity) {
       setQuizAnswers({});
     }
@@ -131,6 +188,9 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     if (savedProgress?.correctCount !== undefined) {
       if (matchingPairs.length > 0) setMatchingCorrectCount(savedProgress.correctCount);
       if (orderItems.length > 0) setOrderCorrectCount(savedProgress.correctCount);
+    } else if (isCompletedGood) {
+      if (matchingPairs.length > 0) setMatchingCorrectCount(matchingPairs.length);
+      if (orderItems.length > 0) setOrderCorrectCount(orderItems.length);
     }
 
     if (isNewActivity) {
@@ -644,6 +704,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             orderItems={orderItems}
             checked={checked}
             savedOrder={savedProgress?.userAnswers}
+            isCompleted={savedProgress?.completed}
+            savedScore={savedProgress?.score}
             onOrderChange={setOrderAnswers}
             onCheckStateChange={(isAllCorrect, correctCount) => {
               setOrderIsAllCorrect(isAllCorrect);
@@ -660,6 +722,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             pairs={matchingPairs}
             checked={checked}
             savedAnswers={savedProgress?.userAnswers}
+            isCompleted={savedProgress?.completed}
+            savedScore={savedProgress?.score}
             onAnswersChange={setMatchingAnswers}
             onCheckStateChange={(isAllCorrect, correctCount) => {
               setMatchingIsAllCorrect(isAllCorrect);

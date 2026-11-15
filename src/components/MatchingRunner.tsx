@@ -7,6 +7,8 @@ interface MatchingRunnerProps {
   pairs: MatchingPair[];
   checked: boolean;
   savedAnswers?: Record<string | number, string>;
+  isCompleted?: boolean;
+  savedScore?: number;
   onAnswersChange?: (answers: string[]) => void;
   onCheckStateChange: (isAllCorrect: boolean, correctCount: number) => void;
   hintTrigger: number;
@@ -19,50 +21,65 @@ interface AnswerSlot {
 
 const buildInitialAnswers = (
   pairsList: MatchingPair[],
-  saved?: Record<string | number, string>
+  saved?: Record<string | number, string>,
+  isCompleted?: boolean,
+  savedScore?: number
 ): AnswerSlot[] => {
   const defaultList: AnswerSlot[] = pairsList.map((p, idx) => ({ origIdx: idx, text: p.correctAnswer }));
-  if (!saved || Object.keys(saved).length === 0) {
-    if (defaultList.length > 1) {
-      return [...defaultList.slice(1), defaultList[0]];
+
+  const hasSavedAnswers = saved && Object.keys(saved).length > 0 && Object.values(saved).some(v => typeof v === 'string' && v.trim().length > 0);
+
+  // 1. If explicit answers are saved, restore them
+  if (hasSavedAnswers) {
+    const usedIndices = new Set<number>();
+    const restored: (AnswerSlot | null)[] = [];
+
+    for (let i = 0; i < pairsList.length; i++) {
+      const savedText = saved[i] || saved[String(i)];
+      if (savedText) {
+        const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && item.text === savedText);
+        if (foundIdx !== -1) {
+          restored.push(defaultList[foundIdx]);
+          usedIndices.add(foundIdx);
+          continue;
+        }
+      }
+      restored.push(null);
     }
+
+    let unusedIdx = 0;
+    return restored.map(slot => {
+      if (slot) return slot;
+      while (usedIndices.has(unusedIdx) && unusedIdx < defaultList.length) {
+        unusedIdx++;
+      }
+      if (unusedIdx < defaultList.length) {
+        usedIndices.add(unusedIdx);
+        return defaultList[unusedIdx++];
+      }
+      return defaultList[0];
+    });
+  }
+
+  // 2. If no saved answers, but the exercise was completed with high score (legacy saves):
+  // Restore the correct matched pairs!
+  if (isCompleted && (savedScore === undefined || savedScore === 100 || savedScore >= 80)) {
     return defaultList;
   }
 
-  const usedIndices = new Set<number>();
-  const restored: (AnswerSlot | null)[] = [];
-
-  for (let i = 0; i < pairsList.length; i++) {
-    const savedText = saved[i] || saved[String(i)];
-    if (savedText) {
-      const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && item.text === savedText);
-      if (foundIdx !== -1) {
-        restored.push(defaultList[foundIdx]);
-        usedIndices.add(foundIdx);
-        continue;
-      }
-    }
-    restored.push(null);
+  // 3. Otherwise scramble
+  if (defaultList.length > 1) {
+    return [...defaultList.slice(1), defaultList[0]];
   }
-
-  let unusedIdx = 0;
-  return restored.map(slot => {
-    if (slot) return slot;
-    while (usedIndices.has(unusedIdx) && unusedIdx < defaultList.length) {
-      unusedIdx++;
-    }
-    if (unusedIdx < defaultList.length) {
-      usedIndices.add(unusedIdx);
-      return defaultList[unusedIdx++];
-    }
-    return defaultList[0];
-  });
+  return defaultList;
 };
 
 export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
   pairs,
   checked,
   savedAnswers,
+  isCompleted,
+  savedScore,
   onAnswersChange,
   onCheckStateChange,
   hintTrigger
@@ -70,13 +87,13 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
   const { t } = useLanguage();
   // Initialize with saved answers if available, otherwise scramble
   const [answers, setAnswers] = useState<AnswerSlot[]>(() => {
-    return buildInitialAnswers(pairs, savedAnswers);
+    return buildInitialAnswers(pairs, savedAnswers, isCompleted, savedScore);
   });
 
-  // Re-sync when pairs or savedAnswers change
+  // Re-sync when pairs, savedAnswers, or completion status change
   useEffect(() => {
-    setAnswers(buildInitialAnswers(pairs, savedAnswers));
-  }, [pairs, savedAnswers]);
+    setAnswers(buildInitialAnswers(pairs, savedAnswers, isCompleted, savedScore));
+  }, [pairs, savedAnswers, isCompleted, savedScore]);
 
   // Notify parent of answers order
   useEffect(() => {
