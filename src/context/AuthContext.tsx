@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { ActivityProgress, AssignmentSubmission, AIEvaluationResult } from '../types/course';
 import { notifyNewSubmission, notifyReviewedSubmission } from '../lib/telegram';
@@ -32,7 +32,7 @@ interface AuthContextType {
   setIsPasswordRecoveryMode: (active: boolean) => void;
   refreshUsersList: () => Promise<void>;
   refreshSubmissions: () => Promise<void>;
-  syncAllFromDatabase: () => Promise<void>;
+  syncAllFromDatabase: (options?: { force?: boolean }) => Promise<void>;
   isSyncing: boolean;
   lastSyncedAt: string | null;
   syncLocalUsersToSupabase: () => Promise<{ count: number; error?: string }>;
@@ -172,14 +172,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Load progress when user changes
+  // 1. Synchronously load cached progress from localStorage when active user changes
   useEffect(() => {
     if (!currentUser) {
       setAllProgress({});
       return;
     }
-
-    // 1. Immediately load cached progress from localStorage for instant display
     const userProgressKey = `romanian_progress_${currentUser.id}`;
     const saved = localStorage.getItem(userProgressKey);
     if (saved) {
@@ -191,43 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       setAllProgress({});
     }
-
-    // 2. Fetch latest progress from Supabase
-    const supabase = getSupabase();
-    if (supabase) {
-      // Sync profile to Supabase public.profiles
-      supabase.from('profiles').upsert({
-        id: currentUser.id,
-        email: currentUser.email,
-        name: currentUser.name,
-        role: currentUser.role
-      }, { onConflict: 'id' }).then(() => {});
-
-      // Load from Supabase
-      supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .then(({ data, error }) => {
-          if (!error && data) {
-            const map: Record<string, ActivityProgress> = {};
-            data.forEach((row: any) => {
-              map[row.activity_id] = {
-                activityId: row.activity_id,
-                completed: row.completed,
-                score: row.score,
-                correctCount: row.correct_count,
-                totalGaps: row.total_gaps,
-                userAnswers: row.user_answers || {},
-                lastAttemptAt: row.last_attempt_at
-              };
-            });
-            setAllProgress(map);
-            localStorage.setItem(userProgressKey, JSON.stringify(map));
-          }
-        });
-    }
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
@@ -238,8 +200,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   });
 
+  // Keep fresh refs to avoid stale closures in stable callbacks
+  const currentUserRef = useRef<UserProfile | null>(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  const allProgressRef = useRef<Record<string, ActivityProgress>>(allProgress);
+  useEffect(() => {
+    allProgressRef.current = allProgress;
+  }, [allProgress]);
+
+  const usersListRef = useRef<UserProfile[]>(usersList);
+  useEffect(() => {
+    usersListRef.current = usersList;
+  }, [usersList]);
+
+  const allSubmissionsRef = useRef<AssignmentSubmission[]>(allSubmissions);
+  useEffect(() => {
+    allSubmissionsRef.current = allSubmissions;
+  }, [allSubmissions]);
+
+  // Client-side TTL cache for student dossiers (60s TTL)
+  const studentProgressCacheRef = useRef<Map<string, { data: Record<string, ActivityProgress>; timestamp: number }>>(new Map());
+
+  // In-flight mutex & throttling refs
+  const inFlightSyncRef = useRef<Promise<void> | null>(null);
+  const lastSyncTimestampRef = useRef<number>(0);
+
   // Sync users list from Supabase if currentUser is admin
-  const refreshUsersList = async () => {
+  const refreshUsersList = useCallback(async () => {
     const supabase = getSupabase();
     if (supabase) {
       try {
@@ -268,14 +258,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Failed to sync profiles from Supabase', err);
       }
     }
-  };
+  }, []);
 
   // Sync all local users to Supabase profiles
-  const syncLocalUsersToSupabase = async (): Promise<{ count: number; error?: string }> => {
+  const syncLocalUsersToSupabase = useCallback(async (): Promise<{ count: number; error?: string }> => {
     const supabase = getSupabase();
     if (!supabase) return { count: 0, error: 'Supabase nu este configurat' };
     try {
-      const records = usersList.map(u => ({
+      const records = usersListRef.current.map(u => ({
         id: u.id,
         email: u.email,
         name: u.name,
@@ -288,135 +278,195 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       return { count: 0, error: e?.message || 'Eroare la sincronizare' };
     }
-  };
+  }, [refreshUsersList]);
 
-  const currentUserRef = useRef<UserProfile | null>(currentUser);
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
-
-  // MASTER SYNC: Queries Supabase for latest progress, submissions, and profiles on every load/refresh
-  const syncAllFromDatabase = useCallback(async () => {
+  // MASTER SYNC: Deduplicated, throttled queries to Supabase
+  const syncAllFromDatabase = useCallback(async (options?: { force?: boolean }): Promise<void> => {
     const supabase = getSupabase();
     if (!supabase) return;
 
-    setIsSyncing(true);
-    try {
-      const activeUser = currentUserRef.current;
-
-      // Parallel fetch from Supabase
-      const [subsRes, progRes, profileRes] = await Promise.all([
-        supabase
-          .from('submissions')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        activeUser
-          ? supabase.from('user_progress').select('*').eq('user_id', activeUser.id)
-          : Promise.resolve(null),
-        activeUser
-          ? supabase.from('profiles').select('*').eq('id', activeUser.id).maybeSingle()
-          : Promise.resolve(null)
-      ]);
-
-      // Apply latest submissions
-      if (!subsRes.error && subsRes.data) {
-        const mapped: AssignmentSubmission[] = subsRes.data.map((row: any) => ({
-          id: row.id,
-          userId: row.user_id,
-          userEmail: row.user_email,
-          userName: row.user_name,
-          activityId: row.activity_id,
-          activityTitle: row.activity_title,
-          submissionText: row.submission_text,
-          status: (row.status as 'pending' | 'reviewed') || 'pending',
-          grade: row.grade !== null && row.grade !== undefined ? Number(row.grade) : undefined,
-          teacherFeedback: row.teacher_feedback || undefined,
-          createdAt: row.created_at
-        }));
-        setAllSubmissions(mapped);
-        localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(mapped));
-      }
-
-      // Apply latest user progress
-      if (activeUser && progRes && !progRes.error && progRes.data) {
-        const map: Record<string, ActivityProgress> = {};
-        progRes.data.forEach((row: any) => {
-          map[row.activity_id] = {
-            activityId: row.activity_id,
-            completed: row.completed,
-            score: row.score,
-            correctCount: row.correct_count,
-            totalGaps: row.total_gaps,
-            userAnswers: row.user_answers || {},
-            lastAttemptAt: row.last_attempt_at
-          };
-        });
-        setAllProgress(map);
-        const userProgressKey = `romanian_progress_${activeUser.id}`;
-        localStorage.setItem(userProgressKey, JSON.stringify(map));
-      }
-
-      // Apply latest profile & role
-      if (activeUser && profileRes && !profileRes.error && profileRes.data) {
-        const p = profileRes.data;
-        const cleanEmail = activeUser.email.toLowerCase();
-        const isAdminEmail = cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com';
-        const freshRole: UserRole = isAdminEmail ? 'admin' : ((p.role as UserRole) || activeUser.role);
-
-        if (p.name !== activeUser.name || freshRole !== activeUser.role) {
-          const updatedProfile: UserProfile = {
-            ...activeUser,
-            name: p.name || activeUser.name,
-            role: freshRole
-          };
-          setCurrentUser(updatedProfile);
-          currentUserRef.current = updatedProfile;
-          localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedProfile));
-        }
-      }
-
-      // If admin, also refresh users list
-      if (activeUser?.role === 'admin') {
-        refreshUsersList();
-      }
-
-      setLastSyncedAt(new Date().toISOString());
-    } catch (err) {
-      console.warn('Sync from cloud database error:', err);
-    } finally {
-      setIsSyncing(false);
+    const now = Date.now();
+    // Throttle: don't sync if another sync finished less than 5 seconds ago (unless forced)
+    if (!options?.force && now - lastSyncTimestampRef.current < 5000) {
+      return;
     }
+
+    // In-flight deduplication: return active promise if already syncing
+    if (inFlightSyncRef.current) {
+      return inFlightSyncRef.current;
+    }
+
+    const runSync = async () => {
+      setIsSyncing(true);
+      try {
+        const activeUser = currentUserRef.current;
+        const isAdmin = activeUser?.role === 'admin' || 
+                        activeUser?.email.toLowerCase() === 'admin@antem.org' || 
+                        activeUser?.email.toLowerCase() === 'rmo84791@gmail.com';
+
+        // 1 consolidated batch:
+        // - submissions
+        // - user_progress (only for active user)
+        // - profiles (if admin: select('*') satisfies BOTH usersList and activeUser profile in 1 query!)
+        const [subsRes, progRes, profilesRes] = await Promise.all([
+          supabase
+            .from('submissions')
+            .select('*')
+            .order('created_at', { ascending: false }),
+          activeUser
+            ? supabase.from('user_progress').select('*').eq('user_id', activeUser.id)
+            : Promise.resolve(null),
+          isAdmin
+            ? supabase.from('profiles').select('*')
+            : (activeUser ? supabase.from('profiles').select('*').eq('id', activeUser.id).maybeSingle() : Promise.resolve(null))
+        ]);
+
+        // 1. Submissions
+        if (!subsRes.error && subsRes.data) {
+          const mapped: AssignmentSubmission[] = subsRes.data.map((row: any) => ({
+            id: row.id,
+            userId: row.user_id,
+            userEmail: row.user_email,
+            userName: row.user_name,
+            activityId: row.activity_id,
+            activityTitle: row.activity_title,
+            submissionText: row.submission_text,
+            status: (row.status as 'pending' | 'reviewed') || 'pending',
+            grade: row.grade !== null && row.grade !== undefined ? Number(row.grade) : undefined,
+            teacherFeedback: row.teacher_feedback || undefined,
+            createdAt: row.created_at
+          }));
+          setAllSubmissions(mapped);
+          localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(mapped));
+        }
+
+        // 2. User Progress
+        if (activeUser && progRes && !progRes.error && progRes.data) {
+          const map: Record<string, ActivityProgress> = {};
+          progRes.data.forEach((row: any) => {
+            map[row.activity_id] = {
+              activityId: row.activity_id,
+              completed: row.completed,
+              score: row.score,
+              correctCount: row.correct_count,
+              totalGaps: row.total_gaps,
+              userAnswers: row.user_answers || {},
+              lastAttemptAt: row.last_attempt_at
+            };
+          });
+          setAllProgress(map);
+          const userProgressKey = `romanian_progress_${activeUser.id}`;
+          localStorage.setItem(userProgressKey, JSON.stringify(map));
+        }
+
+        // 3. Profiles
+        if (isAdmin && profilesRes && !profilesRes.error && profilesRes.data) {
+          const profileRows = profilesRes.data;
+          setUsersList(prev => {
+            const map = new Map<string, UserProfile>();
+            prev.forEach(u => map.set(u.email.toLowerCase(), u));
+            profileRows.forEach((p: any) => {
+              const existing = map.get(p.email.toLowerCase());
+              map.set(p.email.toLowerCase(), {
+                id: p.id,
+                email: p.email,
+                name: p.name || p.email,
+                role: (p.role as UserRole) || 'student',
+                password: existing?.password || 'password123',
+                createdAt: p.created_at
+              });
+            });
+            const combined = Array.from(map.values());
+            localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(combined));
+            return combined;
+          });
+
+          if (activeUser) {
+            const myRow = profileRows.find((p: any) => p.id === activeUser.id);
+            if (myRow && (myRow.name !== activeUser.name || (myRow.role && myRow.role !== activeUser.role))) {
+              const cleanEmail = activeUser.email.toLowerCase();
+              const isAdminEmail = cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com';
+              const freshRole: UserRole = isAdminEmail ? 'admin' : ((myRow.role as UserRole) || activeUser.role);
+              const updatedProfile: UserProfile = {
+                ...activeUser,
+                name: myRow.name || activeUser.name,
+                role: freshRole
+              };
+              setCurrentUser(updatedProfile);
+              currentUserRef.current = updatedProfile;
+              localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedProfile));
+            }
+          }
+        } else if (activeUser && profilesRes && !profilesRes.error && profilesRes.data) {
+          const p = profilesRes.data;
+          const cleanEmail = activeUser.email.toLowerCase();
+          const isAdminEmail = cleanEmail === 'admin@antem.org' || cleanEmail === 'rmo84791@gmail.com';
+          const freshRole: UserRole = isAdminEmail ? 'admin' : ((p.role as UserRole) || activeUser.role);
+
+          if (p.name !== activeUser.name || freshRole !== activeUser.role) {
+            const updatedProfile: UserProfile = {
+              ...activeUser,
+              name: p.name || activeUser.name,
+              role: freshRole
+            };
+            setCurrentUser(updatedProfile);
+            currentUserRef.current = updatedProfile;
+            localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedProfile));
+          }
+        }
+
+        lastSyncTimestampRef.current = Date.now();
+        setLastSyncedAt(new Date().toISOString());
+      } catch (err) {
+        console.warn('Sync from cloud database error:', err);
+      } finally {
+        setIsSyncing(false);
+        inFlightSyncRef.current = null;
+      }
+    };
+
+    inFlightSyncRef.current = runSync();
+    return inFlightSyncRef.current;
   }, []);
 
-  // Sync immediately when user changes (login, logout, switch)
+  // Sync immediately when active user changes
   useEffect(() => {
-    syncAllFromDatabase();
-  }, [currentUser, syncAllFromDatabase]);
+    if (currentUser) {
+      syncAllFromDatabase({ force: true });
+    }
+  }, [currentUser?.id, syncAllFromDatabase]);
 
   // Long-lived real-time subscriptions and window focus/interval polling (registered once)
   useEffect(() => {
-    const handleFocus = () => syncAllFromDatabase();
-    const handleVisibility = () => {
+    // When returning to tab or window focus, only sync if it has been at least 30 seconds since last sync
+    const handleFocusOrVisible = () => {
       if (document.visibilityState === 'visible') {
-        syncAllFromDatabase();
+        const timeSinceLastSync = Date.now() - lastSyncTimestampRef.current;
+        if (timeSinceLastSync > 30000) {
+          syncAllFromDatabase();
+        }
       }
     };
-    const handleOnline = () => syncAllFromDatabase();
 
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('online', handleOnline);
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', handleFocusOrVisible);
+    window.addEventListener('online', handleFocusOrVisible);
 
+    // Light background sync interval: 120 seconds (2 minutes), only when tab is active and last sync > 60s
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        syncAllFromDatabase();
+        const timeSinceLastSync = Date.now() - lastSyncTimestampRef.current;
+        if (timeSinceLastSync > 60000) {
+          syncAllFromDatabase();
+        }
       }
-    }, 20000);
+    }, 120000);
 
     const supabase = getSupabase();
     let subsChannel: any = null;
     let progChannel: any = null;
     let authSub: any = null;
+    let realtimeDebounceTimer: any = null;
 
     if (supabase) {
       try {
@@ -430,26 +480,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // ignore
       }
 
+      // Debounced sync function for realtime events (collapses multiple rapid events into 1 sync)
+      const triggerDebouncedSync = () => {
+        if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
+        realtimeDebounceTimer = setTimeout(() => {
+          syncAllFromDatabase({ force: true });
+        }, 1500);
+      };
+
       subsChannel = supabase
         .channel('submissions_realtime_sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
-          syncAllFromDatabase();
+          triggerDebouncedSync();
         })
         .subscribe();
 
       progChannel = supabase
         .channel('progress_realtime_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_progress' }, () => {
-          syncAllFromDatabase();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_progress' }, (payload: any) => {
+          const activeUser = currentUserRef.current;
+          const payloadUserId = payload?.new?.user_id || payload?.old?.user_id;
+
+          // If another student changed their progress:
+          // Invalidate their cached student card entry, but DO NOT re-query the entire database for this client!
+          if (activeUser && payloadUserId && payloadUserId !== activeUser.id) {
+            studentProgressCacheRef.current.delete(payloadUserId);
+            return;
+          }
+
+          // If it's the active user: debounce sync
+          triggerDebouncedSync();
         })
         .subscribe();
     }
 
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('focus', handleFocusOrVisible);
+      document.removeEventListener('visibilitychange', handleFocusOrVisible);
+      window.removeEventListener('online', handleFocusOrVisible);
       clearInterval(interval);
+      if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
       if (authSub && typeof authSub.unsubscribe === 'function') {
         authSub.unsubscribe();
       }
@@ -460,10 +530,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [syncAllFromDatabase]);
 
-  const loginAs = (user: UserProfile) => {
+  const loginAs = useCallback((user: UserProfile) => {
     const isAdminEmail = user.email.toLowerCase() === 'admin@antem.org' || user.email.toLowerCase() === 'rmo84791@gmail.com';
     const resolvedUser: UserProfile = isAdminEmail ? { ...user, role: 'admin' } : user;
     setCurrentUser(resolvedUser);
+    currentUserRef.current = resolvedUser;
     localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(resolvedUser));
 
     const supabase = getSupabase();
@@ -477,9 +548,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) console.warn('Profile sync notice:', error.message);
       });
     }
-  };
+  }, []);
 
-  const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+  const loginWithCredentials = useCallback(async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = pass.trim();
 
@@ -543,7 +614,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // 2. Check local users database
-    const matched = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+    const matched = usersListRef.current.find(u => u.email.toLowerCase() === cleanEmail);
     if (!matched) {
       return {
         success: false,
@@ -560,9 +631,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     loginAs(matched);
     return { success: true };
-  };
+  }, [loginAs]);
 
-  const registerWithCredentials = async (
+  const registerWithCredentials = useCallback(async (
     name: string,
     email: string,
     pass: string
@@ -610,7 +681,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: err?.message || 'Eroare Supabase' };
       }
     } else {
-      const existing = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+      const existing = usersListRef.current.find(u => u.email.toLowerCase() === cleanEmail);
       if (existing) {
         return {
           success: false,
@@ -628,27 +699,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString()
     };
 
-    const updated = [...usersList.filter(u => u.email.toLowerCase() !== cleanEmail), newUser];
-    setUsersList(updated);
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+    setUsersList(prev => {
+      const updated = [...prev.filter(u => u.email.toLowerCase() !== cleanEmail), newUser];
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+      return updated;
+    });
     loginAs(newUser);
 
     return { success: true };
-  };
+  }, [loginAs]);
 
-  const changeUserRole = async (userId: string, newRole: UserRole) => {
-    const updated = usersList.map(u => {
-      if (u.id === userId) {
-        return { ...u, role: newRole };
-      }
-      return u;
+  const changeUserRole = useCallback(async (userId: string, newRole: UserRole) => {
+    setUsersList(prev => {
+      const updated = prev.map(u => (u.id === userId ? { ...u, role: newRole } : u));
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+      return updated;
     });
-    setUsersList(updated);
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
 
-    if (currentUser && currentUser.id === userId) {
-      const updatedCurrent = { ...currentUser, role: newRole };
+    const active = currentUserRef.current;
+    if (active && active.id === userId) {
+      const updatedCurrent: UserProfile = { ...active, role: newRole };
       setCurrentUser(updatedCurrent);
+      currentUserRef.current = updatedCurrent;
       localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
     }
 
@@ -660,12 +732,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Supabase update role error', err);
       }
     }
-  };
+  }, []);
 
-  const deleteUser = async (userId: string) => {
-    const updated = usersList.filter(u => u.id !== userId);
-    setUsersList(updated);
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+  const deleteUser = useCallback(async (userId: string) => {
+    setUsersList(prev => {
+      const updated = prev.filter(u => u.id !== userId);
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+      return updated;
+    });
 
     const supabase = getSupabase();
     if (supabase) {
@@ -675,9 +749,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Supabase delete user error', err);
       }
     }
-  };
+  }, []);
 
-  const createNewUser = (
+  const createNewUser = useCallback((
     name: string,
     email: string,
     role: UserRole = 'student',
@@ -691,13 +765,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
       createdAt: new Date().toISOString()
     };
-    const updated = [...usersList, newUser];
-    setUsersList(updated);
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+    setUsersList(prev => {
+      const updated = [...prev, newUser];
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+      return updated;
+    });
     return newUser;
-  };
+  }, []);
 
-  const resetPasswordForEmail = async (email: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+  const resetPasswordForEmail = useCallback(async (email: string): Promise<{ success: boolean; message?: string; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       return { success: false, error: 'Introduceți o adresă de e-mail validă.' };
@@ -722,7 +798,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    const matched = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+    const matched = usersListRef.current.find(u => u.email.toLowerCase() === cleanEmail);
     if (!matched) {
       return {
         success: false,
@@ -734,9 +810,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       success: true,
       message: 'Cont găsit în mod local. Pentru conturile demo/locale parola este "password123" sau "demo123".'
     };
-  };
+  }, []);
 
-  const updateUserPassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+  const updateUserPassword = useCallback(async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
     const cleanPass = newPassword.trim();
     if (cleanPass.length < 6) {
       return { success: false, error: 'Parola trebuie să conțină cel puțin 6 caractere.' };
@@ -756,27 +832,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    if (currentUser) {
-      const updatedUser: UserProfile = { ...currentUser, password: cleanPass };
+    const active = currentUserRef.current;
+    if (active) {
+      const updatedUser: UserProfile = { ...active, password: cleanPass };
       setCurrentUser(updatedUser);
       currentUserRef.current = updatedUser;
       localStorage.setItem(LOCAL_CURRENT_USER_KEY, JSON.stringify(updatedUser));
 
       setUsersList(prev => {
-        const updated = prev.map(u => (u.id === currentUser.id ? { ...u, password: cleanPass } : u));
+        const updated = prev.map(u => (u.id === active.id ? { ...u, password: cleanPass } : u));
         localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
         return updated;
       });
     }
 
     return { success: true };
-  };
+  }, []);
 
-  const getStudentProgress = async (userId: string): Promise<Record<string, ActivityProgress>> => {
-    if (currentUser && currentUser.id === userId && Object.keys(allProgress).length > 0) {
-      return allProgress;
+  // Stable, cached student progress fetcher with 60s in-memory TTL
+  const getStudentProgress = useCallback(async (userId: string): Promise<Record<string, ActivityProgress>> => {
+    // 1. If requesting active current user and memory state is populated
+    const active = currentUserRef.current;
+    if (active && active.id === userId && Object.keys(allProgressRef.current).length > 0) {
+      return allProgressRef.current;
     }
 
+    // 2. Check in-memory cache (60s TTL)
+    const cached = studentProgressCacheRef.current.get(userId);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp < 60000)) {
+      return cached.data;
+    }
+
+    // 3. Query Supabase
     const supabase = getSupabase();
     if (supabase) {
       try {
@@ -784,7 +872,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('user_progress')
           .select('*')
           .eq('user_id', userId);
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const map: Record<string, ActivityProgress> = {};
           data.forEach((row: any) => {
             map[row.activity_id] = {
@@ -797,6 +885,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               lastAttemptAt: row.last_attempt_at
             };
           });
+          studentProgressCacheRef.current.set(userId, { data: map, timestamp: now });
           return map;
         }
       } catch (e) {
@@ -804,34 +893,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Local storage fallback
+    // 4. Local storage fallback
     try {
       const raw = localStorage.getItem(`romanian_progress_${userId}`);
       if (raw) return JSON.parse(raw);
     } catch {}
 
-    return {};
-  };
+    return cached ? cached.data : {};
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setCurrentUser(null);
+    currentUserRef.current = null;
     localStorage.removeItem(LOCAL_CURRENT_USER_KEY);
     const supabase = getSupabase();
     if (supabase) {
       supabase.auth.signOut().catch(() => {});
     }
-  };
+  }, []);
 
-  const saveProgress = async (prog: ActivityProgress) => {
-    if (!currentUser) return;
+  const saveProgress = useCallback(async (prog: ActivityProgress) => {
+    const active = currentUserRef.current;
+    if (!active) return;
 
-    // Update in state & localStorage immediately
+    // Update state & localStorage immediately
     setAllProgress(prev => {
       const next = { ...prev, [prog.activityId]: prog };
-      const userProgressKey = `romanian_progress_${currentUser.id}`;
+      const userProgressKey = `romanian_progress_${active.id}`;
       localStorage.setItem(userProgressKey, JSON.stringify(next));
       return next;
     });
+
+    // Invalidate student dossier cache for active user
+    studentProgressCacheRef.current.delete(active.id);
 
     // Sync to Supabase with onConflict: 'user_id,activity_id'
     const supabase = getSupabase();
@@ -839,7 +933,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const { error } = await supabase.from('user_progress').upsert(
           {
-            user_id: currentUser.id,
+            user_id: active.id,
             activity_id: prog.activityId,
             completed: prog.completed,
             score: prog.score,
@@ -857,15 +951,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Supabase save error', e);
       }
     }
-  };
+  }, []);
 
-  const submitAssignment = async (activityId: string, activityTitle: string, text: string, aiEvaluation?: AIEvaluationResult) => {
-    if (!currentUser) return;
+  const submitAssignment = useCallback(async (activityId: string, activityTitle: string, text: string, aiEvaluation?: AIEvaluationResult) => {
+    const active = currentUserRef.current;
+    if (!active) return;
     const submission: AssignmentSubmission = {
       id: `sub-${Date.now()}`,
-      userId: currentUser.id,
-      userEmail: currentUser.email,
-      userName: currentUser.name,
+      userId: active.id,
+      userEmail: active.email,
+      userName: active.name,
       activityId,
       activityTitle,
       submissionText: text,
@@ -898,7 +993,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           teacher_feedback: submission.teacherFeedback ?? null,
           created_at: submission.createdAt
         });
-        await syncAllFromDatabase();
       } catch (e) {
         console.error('Supabase submit error', e);
       }
@@ -911,10 +1005,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activityTitle: submission.activityTitle,
       submissionText: submission.submissionText
     }).catch(err => console.warn('Telegram notification notice:', err));
-  };
+  }, []);
 
-  const reviewSubmission = async (submissionId: string, grade: number, feedback: string) => {
-    const targetSub = allSubmissions.find(s => s.id === submissionId);
+  const reviewSubmission = useCallback(async (submissionId: string, grade: number, feedback: string) => {
+    const targetSub = allSubmissionsRef.current.find(s => s.id === submissionId);
     if (targetSub) {
       notifyReviewedSubmission({
         userName: targetSub.userName,
@@ -952,14 +1046,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             teacher_feedback: feedback
           })
           .eq('id', submissionId);
-        await syncAllFromDatabase();
       } catch (e) {
         console.error('Supabase review error', e);
       }
     }
-  };
+  }, []);
 
-  const deleteSubmission = async (submissionId: string) => {
+  const deleteSubmission = useCallback(async (submissionId: string) => {
     setAllSubmissions(prev => {
       const updated = prev.filter(s => s.id !== submissionId);
       localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(updated));
@@ -973,44 +1066,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('submissions')
           .delete()
           .eq('id', submissionId);
-        await syncAllFromDatabase();
       } catch (e) {
         console.error('Supabase delete submission error', e);
       }
     }
-  };
+  }, []);
+
+  const contextValue = useMemo<AuthContextType>(() => ({
+    currentUser,
+    usersList,
+    allProgress,
+    allSubmissions,
+    loginAs,
+    loginWithCredentials,
+    registerWithCredentials,
+    createNewUser,
+    changeUserRole,
+    deleteUser,
+    resetPasswordForEmail,
+    updateUserPassword,
+    getStudentProgress,
+    isPasswordRecoveryMode,
+    setIsPasswordRecoveryMode,
+    refreshUsersList,
+    refreshSubmissions: syncAllFromDatabase,
+    syncAllFromDatabase,
+    isSyncing,
+    lastSyncedAt,
+    syncLocalUsersToSupabase,
+    logout,
+    saveProgress,
+    submitAssignment,
+    reviewSubmission,
+    deleteSubmission
+  }), [
+    currentUser,
+    usersList,
+    allProgress,
+    allSubmissions,
+    loginAs,
+    loginWithCredentials,
+    registerWithCredentials,
+    createNewUser,
+    changeUserRole,
+    deleteUser,
+    resetPasswordForEmail,
+    updateUserPassword,
+    getStudentProgress,
+    isPasswordRecoveryMode,
+    refreshUsersList,
+    syncAllFromDatabase,
+    isSyncing,
+    lastSyncedAt,
+    syncLocalUsersToSupabase,
+    logout,
+    saveProgress,
+    submitAssignment,
+    reviewSubmission,
+    deleteSubmission
+  ]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        currentUser,
-        usersList,
-        allProgress,
-        allSubmissions,
-        loginAs,
-        loginWithCredentials,
-        registerWithCredentials,
-        createNewUser,
-        changeUserRole,
-        deleteUser,
-        resetPasswordForEmail,
-        updateUserPassword,
-        getStudentProgress,
-        isPasswordRecoveryMode,
-        setIsPasswordRecoveryMode,
-        refreshUsersList,
-        refreshSubmissions: syncAllFromDatabase,
-        syncAllFromDatabase,
-        isSyncing,
-        lastSyncedAt,
-        syncLocalUsersToSupabase,
-        logout,
-        saveProgress,
-        submitAssignment,
-        reviewSubmission,
-        deleteSubmission
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
