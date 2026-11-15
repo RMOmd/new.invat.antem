@@ -58,7 +58,16 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     return savedProgress?.userAnswers || {};
   });
 
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(() => {
+    if (savedProgress?.userAnswers && quizQuestions.length > 0) {
+      const restoredQuiz: Record<number, number> = {};
+      Object.entries(savedProgress.userAnswers).forEach(([k, v]) => {
+        restoredQuiz[Number(k)] = Number(v);
+      });
+      return restoredQuiz;
+    }
+    return {};
+  });
 
   const [checked, setChecked] = useState<boolean>(() => {
     return !!savedProgress?.completed;
@@ -67,7 +76,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const [activeGapIndex, setActiveGapIndex] = useState<number | null>(null);
   const [showAllSolutions, setShowAllSolutions] = useState(false);
   const [submissionText, setSubmissionText] = useState(() => {
-    return savedProgress?.userAnswers?.[0] || '';
+    return savedProgress?.userAnswers?.[0] || (savedProgress?.userAnswers as any)?.['0'] || '';
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(() => {
@@ -83,12 +92,18 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const [keyInput, setKeyInput] = useState('');
 
   // Dialogue ordering state
-  const [orderCorrectCount, setOrderCorrectCount] = useState(0);
+  const [orderAnswers, setOrderAnswers] = useState<string[]>([]);
+  const [orderCorrectCount, setOrderCorrectCount] = useState<number>(() => {
+    return savedProgress?.correctCount || 0;
+  });
   const [orderIsAllCorrect, setOrderIsAllCorrect] = useState(false);
   const [orderHintTrigger, setOrderHintTrigger] = useState(0);
 
   // Matching pairs state
-  const [matchingCorrectCount, setMatchingCorrectCount] = useState(0);
+  const [matchingAnswers, setMatchingAnswers] = useState<string[]>([]);
+  const [matchingCorrectCount, setMatchingCorrectCount] = useState<number>(() => {
+    return savedProgress?.correctCount || 0;
+  });
   const [matchingIsAllCorrect, setMatchingIsAllCorrect] = useState(false);
   const [matchingHintTrigger, setMatchingHintTrigger] = useState(0);
 
@@ -100,7 +115,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
 
     setAnswers(savedProgress?.userAnswers || {});
     setChecked(!!savedProgress?.completed);
-    setSubmissionText(savedProgress?.userAnswers?.[0] || '');
+    setSubmissionText(savedProgress?.userAnswers?.[0] || (savedProgress?.userAnswers as any)?.['0'] || '');
     setSubmittedSuccess(!!savedProgress?.completed && isAssignmentType);
 
     if (savedProgress?.userAnswers && quizQuestions.length > 0) {
@@ -111,6 +126,11 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       setQuizAnswers(restoredQuiz);
     } else if (isNewActivity) {
       setQuizAnswers({});
+    }
+
+    if (savedProgress?.correctCount !== undefined) {
+      if (matchingPairs.length > 0) setMatchingCorrectCount(savedProgress.correctCount);
+      if (orderItems.length > 0) setOrderCorrectCount(savedProgress.correctCount);
     }
 
     if (isNewActivity) {
@@ -127,12 +147,13 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     }
-  }, [activity.id, savedProgress, isAssignmentType, quizQuestions.length]);
+  }, [activity.id, savedProgress, isAssignmentType, quizQuestions.length, matchingPairs.length, orderItems.length]);
 
   const isGapCorrect = (gapIndex: number): boolean => {
     const gap = gaps.find(g => g.gapIndex === gapIndex);
     if (!gap) return false;
-    const userAns = (answers[gapIndex] || '').trim().toLowerCase();
+    const rawVal = answers[gapIndex] !== undefined ? answers[gapIndex] : (answers as any)[String(gapIndex)];
+    const userAns = (rawVal || '').trim().toLowerCase();
     return gap.correctAnswers.some(ans => ans.trim().toLowerCase() === userAns);
   };
 
@@ -155,7 +176,12 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       const match = el.id.match(/\d+/);
       const gapIdx = match ? parseInt(match[0], 10) : fallbackIdx;
 
-      el.value = answers[gapIdx] || '';
+      const userVal = answers[gapIdx] !== undefined 
+        ? answers[gapIdx] 
+        : (answers as any)[String(gapIdx)] !== undefined 
+        ? (answers as any)[String(gapIdx)] 
+        : '';
+      el.value = userVal || '';
 
       const handleInput = (e: any) => {
         const val = e.target.value;
@@ -293,13 +319,17 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
 
     if (matchingPairs.length > 0) {
       const score = Math.round((matchingCorrectCount / matchingPairs.length) * 100);
+      const savedMatchingAnswers: Record<string, string> = {};
+      matchingAnswers.forEach((ans, idx) => {
+        savedMatchingAnswers[String(idx)] = ans;
+      });
       const prog: ActivityProgress = {
         activityId: activity.id,
         completed: true,
         score,
         correctCount: matchingCorrectCount,
         totalGaps: matchingPairs.length,
-        userAnswers: {},
+        userAnswers: savedMatchingAnswers,
         lastAttemptAt: new Date().toISOString()
       };
       onSaveProgress(prog);
@@ -312,13 +342,17 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
 
     if (orderItems.length > 0) {
       const score = Math.round((orderCorrectCount / orderItems.length) * 100);
+      const savedOrderAnswers: Record<string, string> = {};
+      orderAnswers.forEach((text, idx) => {
+        savedOrderAnswers[String(idx)] = text;
+      });
       const prog: ActivityProgress = {
         activityId: activity.id,
         completed: true,
         score,
         correctCount: orderCorrectCount,
         totalGaps: orderItems.length,
-        userAnswers: {},
+        userAnswers: savedOrderAnswers,
         lastAttemptAt: new Date().toISOString()
       };
       onSaveProgress(prog);
@@ -353,13 +387,18 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     });
 
     const score = Math.round((correct / gaps.length) * 100);
+    const normalizedAnswers: Record<string, string> = {};
+    Object.entries(answers).forEach(([k, v]) => {
+      normalizedAnswers[String(k)] = String(v);
+    });
+
     const prog: ActivityProgress = {
       activityId: activity.id,
       completed: true,
       score,
       correctCount: correct,
       totalGaps: gaps.length,
-      userAnswers: answers,
+      userAnswers: normalizedAnswers,
       lastAttemptAt: new Date().toISOString()
     };
 
@@ -490,6 +529,23 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     ? orderCorrectCount
     : clozeCorrectCount;
 
+  // Source of truth for score display:
+  // When activity is saved & completed, use savedProgress.score directly so it never resets to 0% upon reopening
+  const hasSavedProgress = !!savedProgress?.completed;
+  const displayScore = hasSavedProgress && savedProgress?.score !== undefined
+    ? savedProgress.score
+    : currentTotal > 0
+    ? Math.round((currentCorrect / currentTotal) * 100)
+    : 100;
+
+  const displayCorrect = hasSavedProgress && savedProgress?.correctCount !== undefined
+    ? savedProgress.correctCount
+    : currentCorrect;
+
+  const displayTotal = hasSavedProgress && savedProgress?.totalGaps !== undefined && savedProgress.totalGaps > 0
+    ? savedProgress.totalGaps
+    : currentTotal;
+
   // Clean instructions to prevent repeating the entire dialogue in the header
   const showInstructions = activity.instructions &&
     activity.instructions.length < 120 &&
@@ -506,10 +562,15 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
           </span>
           {checked && (
             <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
-              (currentCorrect === currentTotal) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              (displayScore >= 80) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
             }`}>
               <Award className="w-3.5 h-3.5" />
-              {t('runner_score')}: {Math.round((currentCorrect / (currentTotal || 1)) * 100)}% ({t('runner_correct_count', { correct: currentCorrect, total: currentTotal })})
+              {t('runner_score')}: {displayScore}%
+              {displayTotal > 0 ? (
+                ` (${t('runner_correct_count', { correct: displayCorrect, total: displayTotal })})`
+              ) : (
+                ` • ${t('runner_completed_badge')}`
+              )}
             </span>
           )}
         </div>
@@ -553,7 +614,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 mb-6 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-            Conținutul exercițiului
+            {t('runner_exercise_content')}
           </h2>
           {hasInteractiveTask && checked && currentCorrect < currentTotal && (
             <button
@@ -582,6 +643,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             key={`order-${activity.id}`}
             orderItems={orderItems}
             checked={checked}
+            savedOrder={savedProgress?.userAnswers}
+            onOrderChange={setOrderAnswers}
             onCheckStateChange={(isAllCorrect, correctCount) => {
               setOrderIsAllCorrect(isAllCorrect);
               setOrderCorrectCount(correctCount);
@@ -596,6 +659,8 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             key={`match-${activity.id}`}
             pairs={matchingPairs}
             checked={checked}
+            savedAnswers={savedProgress?.userAnswers}
+            onAnswersChange={setMatchingAnswers}
             onCheckStateChange={(isAllCorrect, correctCount) => {
               setMatchingIsAllCorrect(isAllCorrect);
               setMatchingCorrectCount(correctCount);

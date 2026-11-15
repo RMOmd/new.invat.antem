@@ -5,6 +5,8 @@ import { ArrowUp, ArrowDown, CheckCircle2, XCircle } from 'lucide-react';
 interface DialogueReorderProps {
   orderItems: string[];
   checked: boolean;
+  savedOrder?: Record<string | number, string> | string[];
+  onOrderChange?: (order: string[]) => void;
   onCheckStateChange: (isAllCorrect: boolean, correctCount: number) => void;
   hintTrigger: number;
 }
@@ -14,32 +16,71 @@ interface OrderItem {
   text: string;
 }
 
+const buildInitialItems = (
+  listItems: string[],
+  saved?: Record<string | number, string> | string[]
+): OrderItem[] => {
+  const defaultList: OrderItem[] = listItems.map((text, origIdx) => ({ origIdx, text }));
+  if (!saved || (Array.isArray(saved) && saved.length === 0) || (!Array.isArray(saved) && Object.keys(saved).length === 0)) {
+    if (defaultList.length > 1) {
+      return [...defaultList.slice(1), defaultList[0]];
+    }
+    return defaultList;
+  }
+
+  const usedIndices = new Set<number>();
+  const restored: (OrderItem | null)[] = [];
+
+  for (let i = 0; i < listItems.length; i++) {
+    const savedText = Array.isArray(saved) ? saved[i] : (saved[i] || saved[String(i)]);
+    if (savedText) {
+      const foundIdx = defaultList.findIndex((item, idx) => !usedIndices.has(idx) && item.text === savedText);
+      if (foundIdx !== -1) {
+        restored.push(defaultList[foundIdx]);
+        usedIndices.add(foundIdx);
+        continue;
+      }
+    }
+    restored.push(null);
+  }
+
+  let unusedIdx = 0;
+  return restored.map(slot => {
+    if (slot) return slot;
+    while (usedIndices.has(unusedIdx) && unusedIdx < defaultList.length) {
+      unusedIdx++;
+    }
+    if (unusedIdx < defaultList.length) {
+      usedIndices.add(unusedIdx);
+      return defaultList[unusedIdx++];
+    }
+    return defaultList[0];
+  });
+};
+
 export const DialogueReorder: React.FC<DialogueReorderProps> = ({
   orderItems,
   checked,
+  savedOrder,
+  onOrderChange,
   onCheckStateChange,
   hintTrigger
 }) => {
   const { t } = useLanguage();
-  // Initialize items with unique original indices to prevent duplicate React keys
+  // Initialize with saved order if available, otherwise deterministic shift
   const [items, setItems] = useState<OrderItem[]>(() => {
-    const list: OrderItem[] = orderItems.map((text, origIdx) => ({ origIdx, text }));
-    if (list.length > 1) {
-      // Deterministic shift so it starts scrambled (not pre-solved)
-      return [...list.slice(1), list[0]];
-    }
-    return list;
+    return buildInitialItems(orderItems, savedOrder);
   });
 
-  // Re-sync whenever orderItems change
+  // Re-sync whenever orderItems or savedOrder change
   useEffect(() => {
-    const list: OrderItem[] = orderItems.map((text, origIdx) => ({ origIdx, text }));
-    if (list.length > 1) {
-      setItems([...list.slice(1), list[0]]);
-    } else {
-      setItems(list);
-    }
-  }, [orderItems]);
+    setItems(buildInitialItems(orderItems, savedOrder));
+  }, [orderItems, savedOrder]);
+
+  // Notify parent of items order
+  useEffect(() => {
+    onOrderChange?.(items.map(it => it.text));
+  }, [items, onOrderChange]);
 
   // Handle Hint: puts the first misplaced item into its correct slot
   useEffect(() => {
