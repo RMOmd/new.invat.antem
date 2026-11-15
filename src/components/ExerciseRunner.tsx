@@ -893,15 +893,16 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       )}
 
       {/* Sticky Bottom Bar for Mobile & Desktop - Thumb Friendly */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:py-4 z-40 shadow-lg">
-        <div className="max-w-5xl lg:max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2.5 sm:px-4 py-2 sm:py-3 z-40 shadow-lg pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-5xl lg:max-w-6xl mx-auto flex items-center justify-between gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {hasPrev && (
               <button
                 onClick={onPrev}
                 type="button"
-                className="p-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer shrink-0"
                 title={t('runner_prev')}
+                aria-label={t('runner_prev')}
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -912,22 +913,24 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
                 <button
                   onClick={handleReset}
                   type="button"
-                  className="p-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer"
+                  className="w-10 h-10 flex items-center justify-center text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer shrink-0"
                   title={t('runner_reset')}
+                  aria-label={t('runner_reset')}
                 >
-                  <RotateCcw className="w-5 h-5" />
+                  <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
-                {/* Hint Button */}
+                {/* Hint Button: sleek icon on mobile, expanded text on sm+ */}
                 <button
                   onClick={handleHint}
                   type="button"
-                  className="px-2.5 sm:px-3 py-2 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 rounded-xl transition-all flex items-center gap-1 font-bold text-xs shrink-0 cursor-pointer"
+                  className="h-10 px-2.5 sm:px-3 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 rounded-xl transition-all flex items-center justify-center gap-1.5 font-bold text-xs shrink-0 cursor-pointer"
                   title={t('runner_hint')}
+                  aria-label={t('runner_hint')}
                 >
                   <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>{t('runner_hint')}</span>
-                  <span className="hidden sm:inline">
+                  <span className="hidden sm:inline">{t('runner_hint')}</span>
+                  <span className="hidden md:inline">
                     {quizQuestions.length > 0
                       ? t('runner_hint_answer')
                       : (matchingPairs.length > 0 || orderItems.length > 0)
@@ -942,24 +945,31 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
           <button
             onClick={handleCheck}
             type="button"
-            className="flex-1 max-w-xs py-3 px-5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold rounded-xl shadow-md text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 min-w-0 max-w-xs h-10 sm:h-12 px-3 sm:px-5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold rounded-xl shadow-md text-xs sm:text-base transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
           >
-            <CheckCircle2 className="w-5 h-5" />
-            {isPlaylistType
-              ? (checked ? t('runner_listened_done') : t('runner_mark_listened'))
-              : isAssignmentType
-              ? (submittedSuccess ? t('runner_submitted_done') : t('runner_submit_assignment'))
-              : hasInteractiveTask
-              ? (checked ? t('runner_recheck') : t('runner_check'))
-              : t('runner_mark_read')}
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="truncate">
+              {isPlaylistType
+                ? (checked ? t('runner_listened_done') : t('runner_mark_listened'))
+                : isAssignmentType
+                ? (submittedSuccess ? t('runner_submitted_done') : t('runner_submit_assignment'))
+                : hasInteractiveTask
+                ? (checked ? t('runner_recheck') : t('runner_check'))
+                : t('runner_mark_read')}
+            </span>
           </button>
 
           {hasNext && (
             <button
               onClick={onNext}
               type="button"
-              className="p-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl active:scale-95 transition-all cursor-pointer"
+              className={`w-10 h-10 flex items-center justify-center rounded-xl active:scale-95 transition-all cursor-pointer shrink-0 ${
+                checked
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                  : 'text-slate-700 bg-slate-100 hover:bg-slate-200'
+              }`}
               title={t('runner_next')}
+              aria-label={t('runner_next')}
             >
               <ArrowRight className="w-5 h-5" />
             </button>
