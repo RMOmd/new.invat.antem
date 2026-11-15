@@ -30,8 +30,15 @@ const AppContent: React.FC = () => {
 
   const { currentUser, allProgress, saveProgress, submitAssignment, allSubmissions } = useAuth();
 
-  // Load course data from JSON (with cache buster to guarantee freshest exercises)
+  // Load course data from JSON only after user is authenticated
   useEffect(() => {
+    if (!currentUser) {
+      setCourseData(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     fetch('./course_data.json?v=' + Date.now())
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -46,7 +53,7 @@ const AppContent: React.FC = () => {
         setError('Eroare la încărcarea datelor cursului. Verificați conexiunea.');
         setLoading(false);
       });
-  }, []);
+  }, [currentUser?.id]);
 
   // If not logged in, gate access completely and display AuthView
   if (!currentUser) {
