@@ -13,13 +13,10 @@ import {
   Send,
   AlertCircle,
   Search,
-  Trophy,
-  Target,
-  Sparkles,
-  Shield,
   Calendar,
   ChevronRight,
-  Loader2
+  Loader2,
+  Info
 } from 'lucide-react';
 
 export interface StudentCardTarget {
@@ -143,31 +140,31 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-2.5 sm:p-5 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 animate-fadeIn overflow-hidden">
         {/* Header with Student Identity */}
-        <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white relative">
+        <div className="p-4 sm:p-6 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white relative shrink-0">
           {/* Close button */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="absolute top-3.5 right-3.5 p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             title={t('btn_close')}
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-start sm:items-center gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl sm:text-2xl font-black shadow-lg border border-white/20 shrink-0">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-lg sm:text-2xl font-black shadow-lg border border-white/20 shrink-0">
               {student.name ? student.name.charAt(0).toUpperCase() : 'U'}
             </div>
 
             <div className="min-w-0 flex-1 pr-6">
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight truncate text-white">
+                <h2 className="text-lg sm:text-2xl font-extrabold tracking-tight truncate text-white">
                   {student.name}
                 </h2>
-                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                   student.role === 'admin'
                     ? 'bg-rose-500/30 text-rose-300 border border-rose-500/50'
                     : student.role === 'teacher'
@@ -186,12 +183,12 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs text-blue-200/90 font-mono">
-                <span>{student.email}</span>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-blue-200/90 font-mono">
+                <span className="truncate">{student.email}</span>
                 {student.createdAt && (
                   <span className="flex items-center gap-1 text-[11px] text-slate-300 font-sans">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    Înregistrat: {new Date(student.createdAt).toLocaleDateString()}
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{t('registered_at')} {new Date(student.createdAt).toLocaleDateString()}</span>
                   </span>
                 )}
               </div>
@@ -199,23 +196,23 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
           </div>
 
           {/* Subtitle */}
-          <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-blue-200">
-            <span>{t('student_card_subtitle')}</span>
-            <span className="font-semibold text-amber-300">Nivel A1+ • ANTEM</span>
+          <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] sm:text-xs text-blue-200">
+            <span className="truncate mr-2">{t('student_card_subtitle')}</span>
+            <span className="font-semibold text-amber-300 shrink-0">Nivel A1+ • ANTEM</span>
           </div>
         </div>
 
         {/* 4 Metric KPI Cards */}
-        <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200/80">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="p-3 sm:p-5 bg-slate-50 border-b border-slate-200/80 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {/* KPI 1: Course Progress */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 truncate">
                 {t('student_card_kpi_progress')}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-xl sm:text-2xl font-black text-blue-600">{overallPercent}%</span>
-                <span className="text-xs text-slate-500 font-semibold">({completedCount}/{totalCourseActivities})</span>
+                <span className="text-lg sm:text-2xl font-black text-blue-600">{overallPercent}%</span>
+                <span className="text-[11px] sm:text-xs text-slate-500 font-semibold truncate">({completedCount}/{totalCourseActivities})</span>
               </div>
               <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
                 <div
@@ -226,69 +223,70 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
             </div>
 
             {/* KPI 2: Average Score */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 truncate">
                 {t('student_card_kpi_avg_score')}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className={`text-xl sm:text-2xl font-black ${
+                <span className={`text-lg sm:text-2xl font-black ${
                   averageScore >= 80 ? 'text-emerald-600' : averageScore >= 60 ? 'text-amber-600' : 'text-slate-700'
                 }`}>
                   {completedCount > 0 ? `${averageScore}%` : '—'}
                 </span>
-                <span className="text-xs text-slate-400 font-semibold">acuratețe</span>
+                <span className="text-[11px] sm:text-xs text-slate-400 font-semibold">{t('stats_kpi_accuracy')}</span>
               </div>
-              <span className="text-[10px] text-slate-500 mt-1 block">
-                {completedCount} lecții evaluate
+              <span className="text-[10px] text-slate-500 mt-1 block truncate">
+                {t('student_card_lessons_evaluated', { count: completedCount })}
               </span>
             </div>
 
             {/* KPI 3: Average Grade on Essays */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 truncate">
                 {t('student_card_kpi_avg_grade')}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-xl sm:text-2xl font-black text-purple-600">
+                <span className="text-lg sm:text-2xl font-black text-purple-600">
                   {averageGrade ? `${averageGrade}/10` : '—'}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-500 mt-1 block">
-                {reviewedSubmissions.length} din {studentSubmissions.length} teme notate
+              <span className="text-[10px] text-slate-500 mt-1 block truncate">
+                {t('student_card_submissions_noted', { reviewed: reviewedSubmissions.length, total: studentSubmissions.length })}
               </span>
             </div>
 
             {/* KPI 4: Correct Answers */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 truncate">
                 {t('student_card_kpi_answers')}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-xl sm:text-2xl font-black text-emerald-600">
+                <span className="text-lg sm:text-2xl font-black text-emerald-600">
                   {totalCorrectAnswers}
                 </span>
-                <span className="text-xs text-slate-400 font-semibold">răspunsuri</span>
+                <span className="text-[11px] sm:text-xs text-slate-400 font-semibold">{t('stats_kpi_correct_answers')}</span>
               </div>
-              <span className="text-[10px] text-slate-500 mt-1 block">
-                spații & teste rezolvate
+              <span className="text-[10px] text-slate-500 mt-1 block truncate">
+                {t('student_card_gaps_solved')}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="px-5 pt-3 border-b border-slate-200 flex gap-2 sm:gap-4 shrink-0 bg-white">
+        {/* Tab Navigation (Responsive, horizontally scrollable on mobile, no clipping) */}
+        <div className="px-3 sm:px-5 pt-2 border-b border-slate-200 flex gap-2 sm:gap-4 shrink-0 bg-white overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('exercises')}
-            className={`pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'exercises'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>{t('student_card_tab_exercises')}</span>
+            <span className="hidden sm:inline">{t('student_card_tab_exercises')}</span>
+            <span className="sm:hidden">{t('student_card_tab_exercises_short')}</span>
             <span className="text-xs px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-semibold">
               {completedCount}
             </span>
@@ -297,14 +295,15 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('submissions')}
-            className={`pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'submissions'
                 ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Send className="w-4 h-4" />
-            <span>{t('student_card_tab_submissions')}</span>
+            <span className="hidden sm:inline">{t('student_card_tab_submissions')}</span>
+            <span className="sm:hidden">{t('student_card_tab_submissions_short')}</span>
             <span className="text-xs px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 font-semibold">
               {studentSubmissions.length}
             </span>
@@ -313,14 +312,15 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('weak')}
-            className={`pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2.5 px-2 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'weak'
                 ? 'border-rose-600 text-rose-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <AlertCircle className="w-4 h-4" />
-            <span>{t('student_card_tab_weak')}</span>
+            <span className="hidden sm:inline">{t('student_card_tab_weak')}</span>
+            <span className="sm:hidden">{t('student_card_tab_weak_short')}</span>
             <span className="text-xs px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-semibold">
               {weakEntries.length}
             </span>
@@ -328,11 +328,11 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center text-slate-500">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
-              <span className="text-xs font-semibold">Se încarcă dosarul elevului...</span>
+              <span className="text-xs font-semibold">{t('student_card_loading')}</span>
             </div>
           ) : (
             <>
@@ -346,14 +346,14 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                       type="text"
                       value={searchFilter}
                       onChange={e => setSearchFilter(e.target.value)}
-                      placeholder="Filtrează după titlu, număr lecție sau capitol..."
+                      placeholder={t('student_card_search_ph')}
                       className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                     />
                   </div>
 
                   {filteredCompleted.length === 0 ? (
                     <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-500 text-xs">
-                      {searchFilter ? 'Niciun exercițiu nu corespunde căutării.' : t('student_card_no_exercises')}
+                      {searchFilter ? t('student_card_no_search_results') : t('student_card_no_exercises')}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -382,7 +382,7 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                               </h4>
                               {p?.lastAttemptAt && (
                                 <span className="text-[10px] text-slate-400 block mt-0.5">
-                                  Completat: {new Date(p.lastAttemptAt).toLocaleString()}
+                                  {t('student_card_completed_at')} {new Date(p.lastAttemptAt).toLocaleString()}
                                 </span>
                               )}
                             </div>
@@ -408,7 +408,7 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                                     onClose();
                                   }}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                  title="Deschide exercițiul în curs"
+                                  title={t('student_card_open_act')}
                                 >
                                   <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -453,7 +453,9 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                   : 'bg-amber-100 text-amber-800 border border-amber-200'
                               }`}>
-                                {isReviewed ? `Verificat • Nota ${sub.grade}/10` : 'În așteptare'}
+                                {isReviewed
+                                  ? `${t('subs_status_reviewed')} • ${t('subs_grade_label')} ${sub.grade}/10`
+                                  : t('subs_status_pending')}
                               </span>
                             </div>
 
@@ -466,7 +468,7 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                             {sub.teacherFeedback && (
                               <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 text-xs text-emerald-950 space-y-1">
                                 <span className="font-bold text-[11px] uppercase tracking-wider text-emerald-800 block">
-                                  Comentariul profesorului:
+                                  {t('subs_feedback_label')}
                                 </span>
                                 <p className="leading-relaxed whitespace-pre-wrap font-sans">
                                   {sub.teacherFeedback}
@@ -475,7 +477,7 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                             )}
 
                             <span className="text-[10px] text-slate-400 block pt-1">
-                              Trimis: {new Date(sub.createdAt).toLocaleString()}
+                              {t('student_card_submitted_at')} {new Date(sub.createdAt).toLocaleString()}
                             </span>
                           </div>
                         );
@@ -488,16 +490,29 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
               {/* TAB 3: WEAK AREAS (<80%) */}
               {activeTab === 'weak' && (
                 <div className="space-y-3">
-                  {weakEntries.length === 0 ? (
+                  {completedCount === 0 ? (
+                    /* Student hasn't started lessons yet */
+                    <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-600 text-xs space-y-1.5">
+                      <Info className="w-8 h-8 text-blue-500 mx-auto mb-1" />
+                      <span className="font-bold block text-sm text-slate-900">
+                        {t('student_card_not_started_title')}
+                      </span>
+                      <p className="text-slate-500 max-w-sm mx-auto leading-relaxed">
+                        {t('student_card_not_started_desc')}
+                      </p>
+                    </div>
+                  ) : weakEntries.length === 0 ? (
+                    /* Completed lessons exist and all >= 80% */
                     <div className="p-8 text-center bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-900 text-xs space-y-1">
                       <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-1" />
-                      <span className="font-bold block text-sm">Niciun punct slab identificat!</span>
+                      <span className="font-bold block text-sm">{t('student_card_no_weak_title')}</span>
                       <span>{t('student_card_no_weak')}</span>
                     </div>
                   ) : (
+                    /* Weak activities list */
                     <div className="space-y-2">
                       <p className="text-xs text-slate-500 mb-2">
-                        Exercițiile de mai jos au fost finalizate cu un scor sub 80%. Recomandați elevului să le repete:
+                        {t('student_card_weak_desc')}
                       </p>
                       {weakEntries.map(p => {
                         const actInfo = flatActivities.find(item => item.activity.id === p.activityId);
@@ -522,7 +537,7 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                               </h4>
                               {p.lastAttemptAt && (
                                 <span className="text-[10px] text-slate-400 block">
-                                  Ultima încercare: {new Date(p.lastAttemptAt).toLocaleString()}
+                                  {t('student_card_last_attempt')} {new Date(p.lastAttemptAt).toLocaleString()}
                                 </span>
                               )}
                             </div>
@@ -540,7 +555,7 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
                                     onClose();
                                   }}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white transition-colors cursor-pointer"
-                                  title="Deschide exercițiul"
+                                  title={t('student_card_open_act')}
                                 >
                                   <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -558,14 +573,14 @@ export const StudentCardModal: React.FC<StudentCardModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
-          <span className="text-xs text-slate-500 font-medium">
-            Platforma de testare ANTEM • Mod Profesor / Admin
+        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
+          <span className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">
+            {t('student_card_footer_mode')}
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shrink-0"
           >
             {t('btn_close')}
           </button>

@@ -248,7 +248,26 @@ export const translations: Record<Language, Record<string, string>> = {
     student_card_kpi_answers: 'Răspunsuri corecte',
     student_card_no_exercises: 'Elevul nu a completat încă nicio activitate.',
     student_card_no_submissions: 'Elevul nu a trimis încă nicio lucrare la verificare.',
-    student_card_no_weak: 'Excelent! Elevul nu are activități cu scor scăzut sub 80%.'
+    student_card_no_weak: 'Excelent! Elevul nu are activități cu scor scăzut sub 80%.',
+    registered_at: 'Înregistrat:',
+    student_card_tab_exercises_short: 'Lecții',
+    student_card_tab_submissions_short: 'Teme',
+    student_card_tab_weak_short: 'Erori (<80%)',
+    student_card_lessons_evaluated: '{count} lecții evaluate',
+    student_card_submissions_noted: '{reviewed} din {total} teme notate',
+    student_card_gaps_solved: 'spații & teste rezolvate',
+    student_card_loading: 'Se încarcă dosarul elevului...',
+    student_card_search_ph: 'Filtrează după titlu, număr sau capitol...',
+    student_card_no_search_results: 'Niciun exercițiu nu corespunde căutării.',
+    student_card_completed_at: 'Completat:',
+    student_card_submitted_at: 'Trimis:',
+    student_card_no_weak_title: 'Niciun punct slab identificat!',
+    student_card_weak_desc: 'Exercițiile de mai jos au fost finalizate cu un scor sub 80%. Recomandați elevului să le repete:',
+    student_card_last_attempt: 'Ultima încercare:',
+    student_card_open_act: 'Deschide exercițiul',
+    student_card_footer_mode: 'Platforma de testare ANTEM • Mod Profesor / Admin',
+    student_card_not_started_title: 'Elevul nu a parcurs încă nicio lecție',
+    student_card_not_started_desc: 'Statistica detaliată a greșelilor va apărea după rezolvarea primelor exerciții din curs.'
   },
 
   ru: {
@@ -488,7 +507,26 @@ export const translations: Record<Language, Record<string, string>> = {
     student_card_kpi_answers: 'Правильных ответов',
     student_card_no_exercises: 'Ученик пока не выполнил ни одного урока.',
     student_card_no_submissions: 'Ученик пока не отправлял письменных заданий на проверку.',
-    student_card_no_weak: 'Отлично! У ученика нет заданий с результатом ниже 80%.'
+    student_card_no_weak: 'Отлично! У ученика нет заданий с результатом ниже 80%.',
+    registered_at: 'Зарегистрирован(а):',
+    student_card_tab_exercises_short: 'Уроки',
+    student_card_tab_submissions_short: 'Работы',
+    student_card_tab_weak_short: 'Ошибки (<80%)',
+    student_card_lessons_evaluated: '{count} уроков пройдено',
+    student_card_submissions_noted: '{reviewed} из {total} проверено',
+    student_card_gaps_solved: 'в тестах и пропусках',
+    student_card_loading: 'Загрузка досье ученика...',
+    student_card_search_ph: 'Поиск по названию, номеру или разделу...',
+    student_card_no_search_results: 'Ничего не найдено по вашему запросу.',
+    student_card_completed_at: 'Завершено:',
+    student_card_submitted_at: 'Отправлено:',
+    student_card_no_weak_title: 'Слабых мест не обнаружено!',
+    student_card_weak_desc: 'Упражнения ниже выполнены с баллом менее 80%. Рекомендуется повторить:',
+    student_card_last_attempt: 'Последняя попытка:',
+    student_card_open_act: 'Открыть задание',
+    student_card_footer_mode: 'Платформа тестирования ANTEM • Режим Преподавателя / Администратора',
+    student_card_not_started_title: 'Ученик ещё не проходил уроки',
+    student_card_not_started_desc: 'Подробная статистика ошибок появится после выполнения первых упражнений курса.'
   },
 
   en: {
@@ -728,7 +766,26 @@ export const translations: Record<Language, Record<string, string>> = {
     student_card_kpi_answers: 'Correct answers',
     student_card_no_exercises: 'The student has not completed any activities yet.',
     student_card_no_submissions: 'The student has not submitted any assignments for review yet.',
-    student_card_no_weak: 'Great! The student has no activities with a score below 80%.'
+    student_card_no_weak: 'Great! The student has no activities with a score below 80%.',
+    registered_at: 'Registered:',
+    student_card_tab_exercises_short: 'Lessons',
+    student_card_tab_submissions_short: 'Essays',
+    student_card_tab_weak_short: 'Weak (<80%)',
+    student_card_lessons_evaluated: '{count} lessons evaluated',
+    student_card_submissions_noted: '{reviewed} of {total} graded',
+    student_card_gaps_solved: 'in tests & gaps',
+    student_card_loading: 'Loading student dossier...',
+    student_card_search_ph: 'Filter by title, number or unit...',
+    student_card_no_search_results: 'No exercises match your search query.',
+    student_card_completed_at: 'Completed:',
+    student_card_submitted_at: 'Submitted:',
+    student_card_no_weak_title: 'No weak areas found!',
+    student_card_weak_desc: 'Exercises below were completed with a score under 80%. Recommended to review:',
+    student_card_last_attempt: 'Last attempt:',
+    student_card_open_act: 'Open exercise',
+    student_card_footer_mode: 'ANTEM Testing Platform • Teacher / Admin Mode',
+    student_card_not_started_title: 'The student has not started any lessons yet',
+    student_card_not_started_desc: 'Detailed mistake statistics will appear once course exercises are completed.'
   }
 };
 
