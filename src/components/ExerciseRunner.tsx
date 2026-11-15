@@ -41,10 +41,16 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const matchingPairs = activity.matchingPairs || [];
   const audioTracks = activity.audioTracks || [];
   const isPlaylistType = activity.type === 'audio_playlist' || audioTracks.length > 0;
-  const isAssignmentType = activity.type === 'assignment';
+  // "Producere de text" open-ended written composition activities
+  const isProducereDeText = activity.type === 'assignment' || 
+    activity.title.toLowerCase().includes('producere de text') ||
+    (activity.instructions ? activity.instructions.toLowerCase().includes('producere de text') : false);
+  const isAssignmentType = isProducereDeText;
   const isMatchingType = activity.type === 'matching' || matchingPairs.length > 0;
   const hasInteractiveTask = gaps.length > 0 || orderItems.length > 0 || quizQuestions.length > 0 || isMatchingType || isAssignmentType;
-  const canShowHint = !isAssignmentType && (quizQuestions.length > 0 || matchingPairs.length > 0 || orderItems.length > 0 || gaps.length > 0);
+  // Hint button is available in cloze exercises (to reveal letters in gaps), quizzes, matching & reorder,
+  // but strictly hidden ONLY for "Producere de text" assignments where students write their own essay/text.
+  const canShowHint = !isProducereDeText && (quizQuestions.length > 0 || matchingPairs.length > 0 || orderItems.length > 0 || gaps.length > 0);
 
   const bodyRef = useRef<HTMLDivElement>(null);
 
