@@ -44,6 +44,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const isAssignmentType = activity.type === 'assignment';
   const isMatchingType = activity.type === 'matching' || matchingPairs.length > 0;
   const hasInteractiveTask = gaps.length > 0 || orderItems.length > 0 || quizQuestions.length > 0 || isMatchingType || isAssignmentType;
+  const canShowHint = !isAssignmentType && (quizQuestions.length > 0 || matchingPairs.length > 0 || orderItems.length > 0 || gaps.length > 0);
 
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -375,6 +376,12 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     setShowAllSolutions(false);
     setOrderHintTrigger(0);
     setMatchingHintTrigger(0);
+    if (isAssignmentType) {
+      setSubmissionText('');
+      setSubmittedSuccess(false);
+      setAiEvaluation(null);
+      setAiError(null);
+    }
     if (bodyRef.current) {
       const formEls = bodyRef.current.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
         'input.GapBox, input[id^="Gap"], select.GapBox, select[id^="Gap"]'
@@ -920,24 +927,26 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
                   <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
-                {/* Hint Button: sleek icon on mobile, expanded text on sm+ */}
-                <button
-                  onClick={handleHint}
-                  type="button"
-                  className="h-10 px-2.5 sm:px-3 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 rounded-xl transition-all flex items-center justify-center gap-1.5 font-bold text-xs shrink-0 cursor-pointer"
-                  title={t('runner_hint')}
-                  aria-label={t('runner_hint')}
-                >
-                  <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="hidden sm:inline">{t('runner_hint')}</span>
-                  <span className="hidden md:inline">
-                    {quizQuestions.length > 0
-                      ? t('runner_hint_answer')
-                      : (matchingPairs.length > 0 || orderItems.length > 0)
-                      ? t('runner_hint_step')
-                      : t('runner_hint_letter')}
-                  </span>
-                </button>
+                {/* Hint Button: only for activities with actual hints (cloze, quiz, dialogue order, matching) - NOT for open written assignments */}
+                {canShowHint && (
+                  <button
+                    onClick={handleHint}
+                    type="button"
+                    className="h-10 px-2.5 sm:px-3 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 rounded-xl transition-all flex items-center justify-center gap-1.5 font-bold text-xs shrink-0 cursor-pointer"
+                    title={t('runner_hint')}
+                    aria-label={t('runner_hint')}
+                  >
+                    <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="hidden sm:inline">{t('runner_hint')}</span>
+                    <span className="hidden md:inline">
+                      {quizQuestions.length > 0
+                        ? t('runner_hint_answer')
+                        : (matchingPairs.length > 0 || orderItems.length > 0)
+                        ? t('runner_hint_step')
+                        : t('runner_hint_letter')}
+                    </span>
+                  </button>
+                )}
               </>
             )}
           </div>
