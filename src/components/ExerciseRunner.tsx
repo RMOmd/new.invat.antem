@@ -799,7 +799,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             Text / Dialog pentru lectură
           </h2>
           <div
-            className="prose prose-slate max-w-none text-slate-800 leading-relaxed overflow-x-auto"
+            className="prose prose-slate max-w-none text-slate-800 leading-relaxed overflow-x-clip"
             dangerouslySetInnerHTML={{ __html: activity.readingHtml }}
           />
         </div>
@@ -827,7 +827,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         {activity.bodyHtml && (
           <div
             ref={bodyRef}
-            className="prose prose-slate max-w-none text-slate-800 overflow-x-auto"
+            className="prose prose-slate max-w-none text-slate-800 overflow-x-clip"
             dangerouslySetInnerHTML={{ __html: processedBodyHtml }}
           />
         )}
