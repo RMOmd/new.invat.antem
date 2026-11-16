@@ -173,28 +173,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={onBackToCourse}>
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-            <div>
-              <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-none block">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 pt-[env(safe-area-inset-top,0px)]">
+        <div className="max-w-4xl mx-auto px-2.5 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-1 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0" onClick={onBackToCourse}>
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-600 shrink-0"></span>
+            <div className="shrink-0 flex flex-col justify-center">
+              <span className="font-extrabold text-sm sm:text-base md:text-lg text-slate-900 tracking-tight leading-tight block whitespace-nowrap">
                 Limba Română
               </span>
-              <span className="text-[10px] font-semibold text-blue-600 block uppercase tracking-wider">
+              <span className="text-[9px] sm:text-[10px] font-semibold text-blue-600 block uppercase tracking-wider whitespace-nowrap leading-none mt-0.5">
                 {t('course_level_badge')}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0">
             {/* Cloud Database Sync indicator & trigger */}
             <button
               type="button"
               onClick={() => syncAllFromDatabase()}
               disabled={isMasterSyncing}
               title={isMasterSyncing ? "Sincronizare cu baza de date..." : "Baza de date conectată. Click pentru actualizare date"}
-              className={`p-1.5 sm:px-2 sm:py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
+              className={`p-1.5 sm:px-2 sm:py-1.5 rounded-lg sm:rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shrink-0 ${
                 isMasterSyncing
                   ? 'bg-blue-50 border-blue-200 text-blue-600'
                   : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900'
@@ -214,11 +214,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
               <button
                 type="button"
                 onClick={() => setShowAdminModal(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg sm:rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
                 title={t('admin_panel_title')}
               >
                 <ShieldCheck className="w-4 h-4 text-rose-600" />
-                <span className="hidden sm:inline">{t('btn_admin_panel')}</span>
+                <span className="hidden md:inline">{t('btn_admin_panel')}</span>
               </button>
             )}
 
@@ -226,9 +226,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
             <button
               type="button"
               onClick={() => setShowProfileModal(true)}
-              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-xs font-semibold text-slate-800 cursor-pointer"
+              className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors text-xs font-semibold text-slate-800 cursor-pointer shrink-0"
+              title={currentUser?.name}
             >
-              <div className={`w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold ${
+              <div className={`w-6 h-6 sm:w-5 sm:h-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold shrink-0 ${
                 currentUser?.role === 'admin'
                   ? 'bg-rose-600'
                   : currentUser?.role === 'teacher'
@@ -239,7 +240,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
               }`}>
                 {currentUser?.name.charAt(0).toUpperCase() || 'U'}
               </div>
-              <span className="max-w-[80px] sm:max-w-[110px] truncate">{currentUser?.name}</span>
+              <span className="hidden md:inline max-w-[100px] truncate">{currentUser?.name}</span>
             </button>
 
             {/* Direct Logout Button */}
@@ -247,7 +248,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToCourse, isInsideExercise
               type="button"
               onClick={logout}
               title={t('btn_logout')}
-              className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg sm:rounded-xl transition-colors cursor-pointer shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>

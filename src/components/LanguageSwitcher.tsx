@@ -15,7 +15,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = 
   ];
 
   return (
-    <div className={`inline-flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200/80 shadow-2xs ${className}`}>
+    <div className={`inline-flex items-center p-0.5 bg-slate-100 rounded-lg sm:rounded-xl border border-slate-200/80 shadow-2xs shrink-0 ${className}`}>
       {options.map(opt => {
         const isActive = language === opt.code;
         return (
@@ -23,7 +23,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = 
             key={opt.code}
             type="button"
             onClick={() => setLanguage(opt.code)}
-            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold rounded-md sm:rounded-lg transition-all cursor-pointer ${
               isActive
                 ? 'bg-white text-blue-600 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
