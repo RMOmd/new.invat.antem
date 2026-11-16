@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Activity, ActivityProgress, AIEvaluationResult } from '../types/course';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -227,6 +228,41 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     return !!opt?.isCorrect;
   };
 
+  // Transform native <audio> tags inside bodyHtml into mount slots for custom <AudioPlayer>
+  const { processedBodyHtml, audioSlots } = useMemo(() => {
+    if (!activity.bodyHtml) return { processedBodyHtml: '', audioSlots: [] };
+    const slots: { id: string; src: string }[] = [];
+    let slotIdx = 0;
+    const transformed = activity.bodyHtml.replace(
+      /<audio[^>]*>[\s\S]*?<\/audio>|<audio[^>]*\/>/gi,
+      (match) => {
+        const srcMatch = match.match(/src=["']([^"']+)["']/i);
+        const src = srcMatch ? srcMatch[1] : '';
+        if (!src) return '';
+        const slotId = `custom-audio-slot-${activity.id}-${slotIdx++}`;
+        slots.push({ id: slotId, src });
+        return `<div id="${slotId}" class="my-4 not-prose"></div>`;
+      }
+    );
+    return { processedBodyHtml: transformed, audioSlots: slots };
+  }, [activity.bodyHtml, activity.id]);
+
+  const [mountedAudioSlots, setMountedAudioSlots] = useState<{ id: string; src: string; el: HTMLElement }[]>([]);
+
+  useEffect(() => {
+    if (!bodyRef.current || audioSlots.length === 0) {
+      setMountedAudioSlots([]);
+      return;
+    }
+    const found = audioSlots
+      .map(slot => {
+        const el = bodyRef.current?.querySelector<HTMLElement>(`#${slot.id}`);
+        return el ? { ...slot, el } : null;
+      })
+      .filter((s): s is { id: string; src: string; el: HTMLElement } => s !== null);
+    setMountedAudioSlots(found);
+  }, [processedBodyHtml, audioSlots]);
+
   // Sync inputs and selects inside bodyHtml with React state
   useEffect(() => {
     if (!bodyRef.current) return;
@@ -266,7 +302,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         }
       }
     });
-  }, [activity.bodyHtml, answers, checked, gaps]);
+  }, [processedBodyHtml, answers, checked, gaps]);
 
   // Hint button: reveal next letter (for cloze) or advance order (for dialogue) or pick answer (for quiz/matching)
   const handleHint = () => {
@@ -651,7 +687,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       </div>
 
       {/* Lesson Audio Player(s) at the top ONLY if audio exists, is not a playlist, and is not already embedded inline in bodyHtml */}
-      {!isPlaylistType && !activity.bodyHtml?.includes('<audio') && audioFiles.map((audioFn, idx) => {
+      {!isPlaylistType && audioSlots.length === 0 && audioFiles.map((audioFn, idx) => {
         const audioSrc = audioFn.startsWith('media/') || audioFn.startsWith('http') ? audioFn : `media/${audioFn}`;
         const title = audioFiles.length > 1
           ? `Ascultă materialul audio (${idx + 1}/${audioFiles.length})`
@@ -690,13 +726,29 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
           )}
         </div>
 
-        {/* Render HTML content (dialogues, cards, images) */}
+        {/* Render HTML content (dialogues, cards, images, audio slots) */}
         {activity.bodyHtml && (
           <div
             ref={bodyRef}
             className="prose prose-slate max-w-none text-slate-800 overflow-x-auto"
-            dangerouslySetInnerHTML={{ __html: activity.bodyHtml }}
+            dangerouslySetInnerHTML={{ __html: processedBodyHtml }}
           />
+        )}
+
+        {/* Portal custom <AudioPlayer> components into inline slots inside bodyHtml */}
+        {mountedAudioSlots.map((slot, sIdx) =>
+          createPortal(
+            <AudioPlayer
+              key={slot.id}
+              src={slot.src}
+              title={
+                audioSlots.length > 1
+                  ? `Ascultă materialul audio (${sIdx + 1}/${audioSlots.length})`
+                  : 'Ascultă înregistrarea audio'
+              }
+            />,
+            slot.el
+          )
         )}
 
         {/* Interactive Dialogue Reordering Component if orderItems exist */}

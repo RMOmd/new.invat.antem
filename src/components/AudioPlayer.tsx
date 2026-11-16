@@ -14,21 +14,53 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title }) => {
   const [playbackRate, setPlaybackRate] = useState(1);
 
   // Clean relative path if necessary
-  const audioSrc = src.startsWith('http') ? src : `${src}`;
+  const audioSrc = !src 
+    ? '' 
+    : (src.startsWith('http') || src.startsWith('data:') || src.startsWith('blob:') 
+        ? src 
+        : src.startsWith('media/') 
+        ? src 
+        : `media/${src}`);
+
+  // Stop when other audio players start playing
+  useEffect(() => {
+    const handleOtherPlay = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail !== audioRef.current && isPlaying) {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      }
+    };
+    window.addEventListener('antem-audio-play', handleOtherPlay);
+    return () => window.removeEventListener('antem-audio-play', handleOtherPlay);
+  }, [isPlaying]);
 
   useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
     setIsPlaying(false);
     setCurrentTime(0);
   }, [src]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
+      window.dispatchEvent(new CustomEvent('antem-audio-play', { detail: audioRef.current }));
       audioRef.current.play().catch(e => console.log('Audio play error:', e));
+      setIsPlaying(true);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const rewind5 = () => {
@@ -84,6 +116,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title }) => {
         src={audioSrc}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
       />
 
