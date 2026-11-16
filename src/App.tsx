@@ -47,6 +47,19 @@ const AppContent: React.FC = () => {
       .then(data => {
         setCourseData(data);
         setLoading(false);
+        try {
+          const isOpen = localStorage.getItem('romanian_active_lesson_open') === 'true';
+          const lastId = localStorage.getItem('romanian_last_active_activity');
+          if (isOpen && lastId && data?.sections) {
+            const allActs: Activity[] = data.sections.flatMap((s: any) => s.activities);
+            const found = allActs.find((a: any) => a.id === lastId);
+            if (found) {
+              setSelectedActivity(found);
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to restore active lesson:', e);
+        }
       })
       .catch(err => {
         console.error('Failed to load course data:', err);
@@ -85,6 +98,13 @@ const AppContent: React.FC = () => {
   const hasPrev = currentIdx > 0;
   const hasNext = currentIdx >= 0 && currentIdx < flatActivities.length - 1;
 
+  const handleBackToCourse = () => {
+    setSelectedActivity(null);
+    try {
+      localStorage.removeItem('romanian_active_lesson_open');
+    } catch {}
+  };
+
   const handleSelectActivity = (act: Activity) => {
     if (currentUser?.role === 'demo') {
       const secIdx = courseData.sections.findIndex(s => s.activities.some(a => a.id === act.id));
@@ -96,6 +116,7 @@ const AppContent: React.FC = () => {
     setSelectedActivity(act);
     setLastActiveActivityId(act.id);
     try {
+      localStorage.setItem('romanian_active_lesson_open', 'true');
       localStorage.setItem('romanian_last_active_activity', act.id);
     } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -107,6 +128,7 @@ const AppContent: React.FC = () => {
       setSelectedActivity(prevAct);
       setLastActiveActivityId(prevAct.id);
       try {
+        localStorage.setItem('romanian_active_lesson_open', 'true');
         localStorage.setItem('romanian_last_active_activity', prevAct.id);
       } catch {}
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -126,6 +148,7 @@ const AppContent: React.FC = () => {
       setSelectedActivity(nextAct);
       setLastActiveActivityId(nextAct.id);
       try {
+        localStorage.setItem('romanian_active_lesson_open', 'true');
         localStorage.setItem('romanian_last_active_activity', nextAct.id);
       } catch {}
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -150,7 +173,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
       <Navbar
         isInsideExercise={!!selectedActivity}
-        onBackToCourse={() => setSelectedActivity(null)}
+        onBackToCourse={handleBackToCourse}
         courseData={courseData}
       />
 
@@ -160,7 +183,7 @@ const AppContent: React.FC = () => {
           <button
             onClick={() => {
               setCurrentTab('course');
-              setSelectedActivity(null);
+              handleBackToCourse();
             }}
             className={`flex items-center gap-2 px-3 border-b-2 text-sm font-semibold transition-colors ${
               currentTab === 'course' && !selectedActivity
@@ -175,7 +198,7 @@ const AppContent: React.FC = () => {
           <button
             onClick={() => {
               setCurrentTab('stats');
-              setSelectedActivity(null);
+              handleBackToCourse();
             }}
             className={`flex items-center gap-2 px-3 border-b-2 text-sm font-semibold transition-colors ${
               currentTab === 'stats'
@@ -190,7 +213,7 @@ const AppContent: React.FC = () => {
           <button
             onClick={() => {
               setCurrentTab('submissions');
-              setSelectedActivity(null);
+              handleBackToCourse();
             }}
             className={`flex items-center gap-2 px-3 border-b-2 text-sm font-semibold transition-colors relative ${
               currentTab === 'submissions'
@@ -219,7 +242,7 @@ const AppContent: React.FC = () => {
             <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
               <button
                 type="button"
-                onClick={() => setSelectedActivity(null)}
+                onClick={handleBackToCourse}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -270,7 +293,7 @@ const AppContent: React.FC = () => {
           currentTab={currentTab}
           onTabChange={tab => {
             setCurrentTab(tab);
-            setSelectedActivity(null);
+            handleBackToCourse();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           pendingSubmissionsCount={submissionsBadgeCount}

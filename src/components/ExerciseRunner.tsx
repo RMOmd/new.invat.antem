@@ -12,6 +12,43 @@ import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '.
 import { CheckCircle2, RotateCcw, Lightbulb, Send, Award, ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles, Copy, Check, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+interface ExerciseDraft {
+  answers?: Record<number, string>;
+  quizAnswers?: Record<number, number>;
+  orderAnswers?: string[];
+  matchingAnswers?: string[];
+  submissionText?: string;
+  updatedAt: number;
+}
+
+const getDraftKey = (userId: string | undefined, activityId: string) => {
+  return `romanian_draft_${userId || 'guest'}_${activityId}`;
+};
+
+const loadDraft = (userId: string | undefined, activityId: string): ExerciseDraft | null => {
+  try {
+    const raw = localStorage.getItem(getDraftKey(userId, activityId));
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to load draft:', e);
+  }
+  return null;
+};
+
+const saveDraft = (userId: string | undefined, activityId: string, draft: ExerciseDraft) => {
+  try {
+    localStorage.setItem(getDraftKey(userId, activityId), JSON.stringify(draft));
+  } catch (e) {
+    console.warn('Failed to save draft:', e);
+  }
+};
+
+const clearDraft = (userId: string | undefined, activityId: string) => {
+  try {
+    localStorage.removeItem(getDraftKey(userId, activityId));
+  } catch (e) {}
+};
+
 interface ExerciseRunnerProps {
   activity: Activity;
   savedProgress?: ActivityProgress;
@@ -55,7 +92,13 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
 
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  // Draft persistence helpers
+  const draft = loadDraft(currentUser?.id, activity.id);
+
   const [answers, setAnswers] = useState<Record<number, string>>(() => {
+    if (draft?.answers && Object.keys(draft.answers).length > 0) {
+      return draft.answers;
+    }
     const saved = savedProgress?.userAnswers;
     if (saved && Object.keys(saved).length > 0) {
       return saved;
@@ -73,6 +116,9 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   });
 
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(() => {
+    if (draft?.quizAnswers && Object.keys(draft.quizAnswers).length > 0) {
+      return draft.quizAnswers;
+    }
     if (savedProgress?.userAnswers && quizQuestions.length > 0) {
       const restoredQuiz: Record<number, number> = {};
       Object.entries(savedProgress.userAnswers).forEach(([k, v]) => {
@@ -94,12 +140,16 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   });
 
   const [checked, setChecked] = useState<boolean>(() => {
+    if (draft) return false;
     return !!savedProgress?.completed;
   });
 
   const [activeGapIndex, setActiveGapIndex] = useState<number | null>(null);
   const [showAllSolutions, setShowAllSolutions] = useState(false);
   const [submissionText, setSubmissionText] = useState(() => {
+    if (draft?.submissionText !== undefined) {
+      return draft.submissionText;
+    }
     return savedProgress?.userAnswers?.[0] || (savedProgress?.userAnswers as any)?.['0'] || '';
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,11 +196,20 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     const isNewActivity = prevActivityIdRef.current !== activity.id;
     prevActivityIdRef.current = activity.id;
 
+    if (!isNewActivity) {
+      // Activity didn't change: background sync from Supabase updated savedProgress.
+      // Do not wipe out active user inputs!
+      return;
+    }
+
+    const currentDraft = loadDraft(currentUser?.id, activity.id);
     const saved = savedProgress?.userAnswers;
     const hasSavedAnswers = saved && Object.keys(saved).length > 0 && Object.values(saved).some(v => v !== null && v !== undefined && String(v).trim().length > 0);
     const isCompletedGood = !!savedProgress?.completed && (savedProgress.score === undefined || savedProgress.score === 100 || savedProgress.score >= 80);
 
-    if (hasSavedAnswers) {
+    if (currentDraft?.answers && Object.keys(currentDraft.answers).length > 0) {
+      setAnswers(currentDraft.answers);
+    } else if (hasSavedAnswers) {
       setAnswers(saved!);
     } else if (isCompletedGood && gaps.length > 0) {
       const fallback: Record<number, string> = {};
@@ -164,11 +223,17 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       setAnswers({});
     }
 
-    setChecked(!!savedProgress?.completed);
-    setSubmissionText(savedProgress?.userAnswers?.[0] || (savedProgress?.userAnswers as any)?.['0'] || '');
+    setChecked(!!savedProgress?.completed && !currentDraft);
+    setSubmissionText(
+      currentDraft?.submissionText !== undefined
+        ? currentDraft.submissionText
+        : (savedProgress?.userAnswers?.[0] || (savedProgress?.userAnswers as any)?.['0'] || '')
+    );
     setSubmittedSuccess(!!savedProgress?.completed && isAssignmentType);
 
-    if (hasSavedAnswers && quizQuestions.length > 0) {
+    if (currentDraft?.quizAnswers && Object.keys(currentDraft.quizAnswers).length > 0) {
+      setQuizAnswers(currentDraft.quizAnswers);
+    } else if (hasSavedAnswers && quizQuestions.length > 0) {
       const restoredQuiz: Record<number, number> = {};
       Object.entries(saved!).forEach(([k, v]) => {
         restoredQuiz[Number(k)] = Number(v);
@@ -183,7 +248,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         }
       });
       setQuizAnswers(fallback);
-    } else if (isNewActivity) {
+    } else {
       setQuizAnswers({});
     }
 
@@ -195,21 +260,44 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       if (orderItems.length > 0) setOrderCorrectCount(orderItems.length);
     }
 
-    if (isNewActivity) {
-      setShowAllSolutions(false);
-      setActiveGapIndex(null);
-      setIsAiEvaluating(false);
-      setAiEvaluation(null);
-      setAiError(null);
-      setCopiedImproved(false);
-      setOrderHintTrigger(0);
-      setMatchingHintTrigger(0);
-      // Only scroll to top when opening a DIFFERENT exercise, not on saving/retrying progress
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }
-  }, [activity.id, savedProgress, isAssignmentType, quizQuestions.length, matchingPairs.length, orderItems.length]);
+    setShowAllSolutions(false);
+    setActiveGapIndex(null);
+    setIsAiEvaluating(false);
+    setAiEvaluation(null);
+    setAiError(null);
+    setCopiedImproved(false);
+    setOrderHintTrigger(0);
+    setMatchingHintTrigger(0);
+    // Only scroll to top when opening a DIFFERENT exercise, not on saving/retrying progress
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activity.id, savedProgress, isAssignmentType, quizQuestions.length, matchingPairs.length, orderItems.length, currentUser?.id]);
+
+  // Debounced auto-save of active draft (300ms) to localStorage
+  useEffect(() => {
+    const hasAnyInput =
+      Object.keys(answers).length > 0 ||
+      Object.keys(quizAnswers).length > 0 ||
+      orderAnswers.length > 0 ||
+      matchingAnswers.length > 0 ||
+      submissionText.trim().length > 0;
+
+    if (!hasAnyInput) return;
+
+    const timer = setTimeout(() => {
+      saveDraft(currentUser?.id, activity.id, {
+        answers,
+        quizAnswers,
+        orderAnswers,
+        matchingAnswers,
+        submissionText,
+        updatedAt: Date.now()
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [answers, quizAnswers, orderAnswers, matchingAnswers, submissionText, activity.id, currentUser?.id]);
 
   const isGapCorrect = (gapIndex: number): boolean => {
     const gap = gaps.find(g => g.gapIndex === gapIndex);
@@ -407,6 +495,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         lastAttemptAt: new Date().toISOString()
       };
       onSaveProgress(prog);
+      if (score >= 80) clearDraft(currentUser?.id, activity.id);
       setChecked(true);
       if (score === 100) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.7 } });
@@ -430,6 +519,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         lastAttemptAt: new Date().toISOString()
       };
       onSaveProgress(prog);
+      if (score >= 80) clearDraft(currentUser?.id, activity.id);
       setChecked(true);
       if (score === 100) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.7 } });
@@ -453,6 +543,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         lastAttemptAt: new Date().toISOString()
       };
       onSaveProgress(prog);
+      if (score >= 80) clearDraft(currentUser?.id, activity.id);
       setChecked(true);
       if (score === 100) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.7 } });
@@ -471,6 +562,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
         lastAttemptAt: new Date().toISOString()
       };
       onSaveProgress(prog);
+      clearDraft(currentUser?.id, activity.id);
       setChecked(true);
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
       return;
@@ -500,6 +592,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     };
 
     onSaveProgress(prog);
+    if (score >= 80) clearDraft(currentUser?.id, activity.id);
     setChecked(true);
 
     if (score === 100) {
@@ -512,8 +605,11 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   };
 
   const handleReset = () => {
+    clearDraft(currentUser?.id, activity.id);
     setAnswers({});
     setQuizAnswers({});
+    setOrderAnswers([]);
+    setMatchingAnswers([]);
     setChecked(false);
     setShowAllSolutions(false);
     setOrderHintTrigger(0);
@@ -585,6 +681,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       lastAttemptAt: new Date().toISOString()
     };
     onSaveProgress(prog);
+    clearDraft(currentUser?.id, activity.id);
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.7 } });
   };
 
@@ -757,7 +854,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             key={`order-${activity.id}-${resetCounter}`}
             orderItems={orderItems}
             checked={checked}
-            savedOrder={savedProgress?.userAnswers}
+            savedOrder={loadDraft(currentUser?.id, activity.id)?.orderAnswers || savedProgress?.userAnswers}
             isCompleted={savedProgress?.completed}
             savedScore={savedProgress?.score}
             onOrderChange={setOrderAnswers}
@@ -775,7 +872,15 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             key={`match-${activity.id}-${resetCounter}`}
             pairs={matchingPairs}
             checked={checked}
-            savedAnswers={savedProgress?.userAnswers}
+            savedAnswers={(() => {
+              const d = loadDraft(currentUser?.id, activity.id);
+              if (d?.matchingAnswers && d.matchingAnswers.length > 0) {
+                const map: Record<string, string> = {};
+                d.matchingAnswers.forEach((ans, idx) => { map[String(idx)] = ans; });
+                return map;
+              }
+              return savedProgress?.userAnswers;
+            })()}
             isCompleted={savedProgress?.completed}
             savedScore={savedProgress?.score}
             onAnswersChange={setMatchingAnswers}

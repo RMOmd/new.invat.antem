@@ -50,7 +50,7 @@ const buildInitialAnswers = (
     }
 
     let unusedIdx = 0;
-    return restored.map(slot => {
+    const finalSlots = restored.map(slot => {
       if (slot) return slot;
       while (usedIndices.has(unusedIdx) && unusedIdx < defaultList.length) {
         unusedIdx++;
@@ -61,6 +61,19 @@ const buildInitialAnswers = (
       }
       return defaultList[0];
     });
+
+    const isCompletedGood = !!isCompleted && (savedScore === undefined || savedScore === 100 || savedScore >= 80);
+    if (isCompletedGood) {
+      let matchingCount = 0;
+      finalSlots.forEach((slot, idx) => {
+        if (clean(slot.text) === clean(pairsList[idx].correctAnswer)) matchingCount++;
+      });
+      if (matchingCount === 0 || matchingCount < pairsList.length * 0.7) {
+        return defaultList;
+      }
+    }
+
+    return finalSlots;
   }
 
   // 2. If no saved answers, but the exercise was completed with high score (legacy saves):

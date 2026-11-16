@@ -53,7 +53,7 @@ const buildInitialItems = (
     }
 
     let unusedIdx = 0;
-    return restored.map(slot => {
+    const finalItems = restored.map(slot => {
       if (slot) return slot;
       while (usedIndices.has(unusedIdx) && unusedIdx < defaultList.length) {
         unusedIdx++;
@@ -64,6 +64,21 @@ const buildInitialItems = (
       }
       return defaultList[0];
     });
+
+    // If marked completed with high score (100%), but the restored answers have 0 correct slots
+    // (i.e. corrupted or saved from initial scrambled state), fall back to the solved order (defaultList)!
+    const isCompletedGood = !!isCompleted && (savedScore === undefined || savedScore === 100 || savedScore >= 80);
+    if (isCompletedGood) {
+      let matchingCount = 0;
+      finalItems.forEach((it, idx) => {
+        if (clean(it.text) === clean(listItems[idx])) matchingCount++;
+      });
+      if (matchingCount === 0 || matchingCount < listItems.length * 0.7) {
+        return defaultList;
+      }
+    }
+
+    return finalItems;
   }
 
   // 2. If no saved order stored, but the exercise was completed with high score (legacy saves where userAnswers was {}):
