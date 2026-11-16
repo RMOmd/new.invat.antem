@@ -20,6 +20,67 @@ interface OrderItem {
 
 const clean = (s: string) => (s || '').trim().replace(/\s+/g, ' ');
 
+// Seeded pseudo-random generator (FNV-1a hash + LCG)
+const createPrng = (seedStr: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seedStr.length; i++) {
+    h = Math.imul(h ^ seedStr.charCodeAt(i), 0x01000193);
+  }
+  let state = h >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+};
+
+// Thorough scramble that guarantees:
+// 1. No item starts at its original/solved index (derangement for n >= 3)
+// 2. Cannot be solved by moving the last item to the top or first item to the bottom (no 1-move solves)
+// 3. Not a simple cyclic shift (+1 or -1)
+const scrambleItems = <T extends { origIdx: number }>(items: T[], seedStr: string): T[] => {
+  const n = items.length;
+  if (n <= 1) return [...items];
+  if (n === 2) return [items[1], items[0]];
+  if (n === 3) return [items[2], items[0], items[1]];
+
+  const rng = createPrng(seedStr);
+
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const copy = [...items];
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const temp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = temp;
+    }
+
+    // 1. Derangement: no item should be in its original position
+    const hasFixedPoint = copy.some((item, i) => item.origIdx === i);
+    if (hasFixedPoint) continue;
+
+    // 2. Reject trivial 1-move solves:
+    // Moving last item to the top must NOT solve the exercise
+    const shiftLastToTopMatches = [copy[n - 1], ...copy.slice(0, n - 1)].every((item, i) => item.origIdx === i);
+    if (shiftLastToTopMatches) continue;
+
+    // Moving first item to the bottom must NOT solve the exercise
+    const shiftFirstToBottomMatches = [...copy.slice(1), copy[0]].every((item, i) => item.origIdx === i);
+    if (shiftFirstToBottomMatches) continue;
+
+    // 3. Reject uniform cyclic shifts (+1 or -1)
+    const isForwardShift = copy.every((item, i) => item.origIdx === (i + 1) % n);
+    if (isForwardShift) continue;
+
+    const isBackwardShift = copy.every((item, i) => item.origIdx === (i - 1 + n) % n);
+    if (isBackwardShift) continue;
+
+    return copy;
+  }
+
+  // Safe fallback if attempt limit reached: reverse array
+  return [...items].reverse();
+};
+
 const buildInitialItems = (
   listItems: string[],
   saved?: Record<string | number, string> | string[],
@@ -87,11 +148,9 @@ const buildInitialItems = (
     return defaultList;
   }
 
-  // 3. Otherwise (uncompleted), start with scrambled order
-  if (defaultList.length > 1) {
-    return [...defaultList.slice(1), defaultList[0]];
-  }
-  return defaultList;
+  // 3. Otherwise (uncompleted), start with thoroughly scrambled order
+  const seed = listItems.join('|||');
+  return scrambleItems(defaultList, seed);
 };
 
 export const DialogueReorder: React.FC<DialogueReorderProps> = ({
