@@ -1173,6 +1173,11 @@ span[id^="tooltip_content"] {
   display: contents !important;
 }
 
+.datagrid.datagrid_audio table td:empty,
+.prose .datagrid.datagrid_audio table td:empty {
+  display: none !important;
+}
+
 .datagrid.datagrid_audio table td,
 .prose .datagrid.datagrid_audio table td {
   display: flex !important;
@@ -1198,6 +1203,15 @@ span[id^="tooltip_content"] {
   border-color: #fb923c !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 4px 10px rgba(251, 146, 60, 0.15) !important;
+}
+
+.datagrid.datagrid_audio table td.audio-playing,
+.prose .datagrid.datagrid_audio table td.audio-playing {
+  border-color: #2563eb !important;
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25), 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+  transform: translateY(-2px) scale(1.03) !important;
 }
 
 .datagrid.datagrid_audio table td a,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Activity, ActivityProgress, AIEvaluationResult } from '../types/course';
 import { useLanguage } from '../context/LanguageContext';
@@ -367,6 +367,164 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       .filter((s): s is { id: string; src: string; el: HTMLElement } => s !== null);
     setMountedAudioSlots(found);
   }, [processedBodyHtml, audioSlots]);
+
+  // Active inline audio instance and playing element ref for interactive chips (e.g. play_stop in vocab/numbers)
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeChipElRef = useRef<HTMLElement | null>(null);
+  const lastPlayCallRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
+
+  const stopActiveChipAudio = useCallback(() => {
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.currentTime = 0;
+      activeAudioRef.current = null;
+    }
+    if (activeChipElRef.current) {
+      activeChipElRef.current.classList.remove('audio-playing');
+      activeChipElRef.current = null;
+    }
+  }, []);
+
+  const handlePlayStop = useCallback((audioId: string) => {
+    if (!audioId) return;
+
+    // Throttle rapid duplicate calls (e.g. inline onclick + container click)
+    const now = Date.now();
+    if (lastPlayCallRef.current.id === audioId && now - lastPlayCallRef.current.time < 300) {
+      return;
+    }
+    lastPlayCallRef.current = { id: audioId, time: now };
+
+    const cleanId = audioId.replace(/^myAudio/i, '').trim();
+
+    // Resolve audio file against activity.media
+    const mediaList = activity.media || [];
+    const mp3s = mediaList.filter(m => m.toLowerCase().endsWith('.mp3'));
+
+    const candidates = [
+      `${cleanId}.mp3`,
+      cleanId.length === 1 && !isNaN(Number(cleanId)) ? `0${cleanId}.mp3` : '',
+      !isNaN(Number(cleanId)) ? `${parseInt(cleanId, 10)}.mp3` : '',
+      cleanId.toLowerCase().endsWith('.mp3') ? cleanId : '',
+    ].filter(Boolean).map(c => c.toLowerCase());
+
+    let matchedFile = mp3s.find(m => candidates.includes(m.toLowerCase()));
+
+    // Fallback: 1-based index into mp3 list (used in some activities like 2161)
+    if (!matchedFile && !isNaN(Number(cleanId))) {
+      const idx = parseInt(cleanId, 10) - 1;
+      if (idx >= 0 && idx < mp3s.length) {
+        matchedFile = mp3s[idx];
+      }
+    }
+
+    if (!matchedFile) {
+      console.warn(`Could not resolve audio for ${audioId} in activity ${activity.id}`);
+      return;
+    }
+
+    const audioSrc = matchedFile.startsWith('media/') || matchedFile.startsWith('http')
+      ? matchedFile
+      : `media/${matchedFile}`;
+
+    // Target element to visually highlight
+    let targetEl: HTMLElement | null = null;
+    if (bodyRef.current) {
+      const anchor = bodyRef.current.querySelector<HTMLElement>(
+        `[onclick*="'${audioId}'"], [onclick*='"${audioId}"']`
+      );
+      targetEl = anchor ? (anchor.closest('td') || anchor) : null;
+    }
+
+    // Toggle off if currently playing this exact audio
+    if (activeAudioRef.current && activeAudioRef.current.dataset.src === audioSrc && !activeAudioRef.current.paused) {
+      stopActiveChipAudio();
+      return;
+    }
+
+    stopActiveChipAudio();
+
+    const audio = new Audio(audioSrc);
+    audio.dataset.src = audioSrc;
+    activeAudioRef.current = audio;
+    activeChipElRef.current = targetEl;
+
+    if (targetEl) {
+      targetEl.classList.add('audio-playing');
+    }
+
+    // Pause other active audio players
+    window.dispatchEvent(new CustomEvent('antem-audio-play', { detail: audio }));
+
+    audio.onended = () => {
+      if (activeAudioRef.current === audio) {
+        stopActiveChipAudio();
+      }
+    };
+
+    audio.onerror = () => {
+      console.warn('Audio playback error for:', audioSrc);
+      if (activeAudioRef.current === audio) {
+        stopActiveChipAudio();
+      }
+    };
+
+    audio.play().catch(err => {
+      console.warn('Audio play failed:', err);
+      if (activeAudioRef.current === audio) {
+        stopActiveChipAudio();
+      }
+    });
+  }, [activity.id, activity.media, stopActiveChipAudio]);
+
+  // Pause inline audio when another audio player (like top AudioPlayer) starts
+  useEffect(() => {
+    const handleOtherPlay = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail !== activeAudioRef.current) {
+        stopActiveChipAudio();
+      }
+    };
+    window.addEventListener('antem-audio-play', handleOtherPlay);
+    return () => {
+      window.removeEventListener('antem-audio-play', handleOtherPlay);
+      stopActiveChipAudio();
+    };
+  }, [stopActiveChipAudio]);
+
+  // Bind play_stop globally and via delegated click on bodyRef
+  useEffect(() => {
+    (window as any).play_stop = (audioId: string) => {
+      handlePlayStop(audioId);
+    };
+
+    const container = bodyRef.current;
+    if (!container) return;
+
+    const handleContainerClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const clickable = target.closest<HTMLElement>('[onclick*="play_stop"], .datagrid_audio td');
+      if (clickable) {
+        const playStopAttr = clickable.getAttribute('onclick') || clickable.querySelector('[onclick*="play_stop"]')?.getAttribute('onclick');
+        if (playStopAttr) {
+          const match = playStopAttr.match(/play_stop\(['"]([^'"]+)['"]\)/);
+          if (match && match[1]) {
+            handlePlayStop(match[1]);
+          }
+        }
+      }
+    };
+
+    container.addEventListener('click', handleContainerClick);
+
+    return () => {
+      container.removeEventListener('click', handleContainerClick);
+      if ((window as any).play_stop) {
+        delete (window as any).play_stop;
+      }
+    };
+  }, [handlePlayStop, processedBodyHtml]);
 
   // Sync inputs and selects inside bodyHtml with React state
   useEffect(() => {
