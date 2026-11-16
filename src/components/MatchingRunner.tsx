@@ -100,13 +100,16 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
   hintTrigger
 }) => {
   const { t } = useLanguage();
+  const hasUserInteractedRef = React.useRef(false);
+
   // Initialize with saved answers if available, otherwise scramble
   const [answers, setAnswers] = useState<AnswerSlot[]>(() => {
     return buildInitialAnswers(pairs, savedAnswers, isCompleted, savedScore);
   });
 
-  // Re-sync when pairs, savedAnswers, or completion status change
+  // Re-sync when pairs, savedAnswers, or completion status change (only if user hasn't actively interacted)
   useEffect(() => {
+    if (hasUserInteractedRef.current) return;
     setAnswers(buildInitialAnswers(pairs, savedAnswers, isCompleted, savedScore));
   }, [pairs, savedAnswers, isCompleted, savedScore]);
 
@@ -118,6 +121,7 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
   // Hint: puts the first mismatched answer into its correct slot
   useEffect(() => {
     if (hintTrigger === 0) return;
+    hasUserInteractedRef.current = true;
     setAnswers(prev => {
       const next = [...prev];
       for (let slot = 0; slot < pairs.length; slot++) {
@@ -137,6 +141,7 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
 
   const moveUp = (idx: number) => {
     if (idx <= 0) return;
+    hasUserInteractedRef.current = true;
     setAnswers(prev => {
       const next = [...prev];
       const temp = next[idx];
@@ -148,6 +153,7 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
 
   const moveDown = (idx: number) => {
     if (idx >= answers.length - 1) return;
+    hasUserInteractedRef.current = true;
     setAnswers(prev => {
       const next = [...prev];
       const temp = next[idx];
@@ -158,6 +164,7 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
   };
 
   const handleSelectAnswer = (slotIdx: number, selectedText: string) => {
+    hasUserInteractedRef.current = true;
     setAnswers(prev => {
       const next = [...prev];
       const otherSlot = next.findIndex((item, i) => i !== slotIdx && item.text === selectedText);

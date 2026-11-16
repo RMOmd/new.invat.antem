@@ -190,6 +190,23 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const [matchingHintTrigger, setMatchingHintTrigger] = useState(0);
   const [resetCounter, setResetCounter] = useState(0);
 
+  const initialDialogueOrder = useMemo(() => {
+    const d = loadDraft(currentUser?.id, activity.id);
+    return d?.orderAnswers || savedProgress?.userAnswers;
+  }, [activity.id, currentUser?.id, resetCounter, savedProgress?.userAnswers]);
+
+  const initialMatchingAnswers = useMemo(() => {
+    const d = loadDraft(currentUser?.id, activity.id);
+    if (d?.matchingAnswers && d.matchingAnswers.length > 0) {
+      const map: Record<string, string> = {};
+      d.matchingAnswers.forEach((ans, idx) => {
+        map[String(idx)] = ans;
+      });
+      return map;
+    }
+    return savedProgress?.userAnswers;
+  }, [activity.id, currentUser?.id, resetCounter, savedProgress?.userAnswers]);
+
   const prevActivityIdRef = useRef(activity.id);
 
   useEffect(() => {
@@ -854,7 +871,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             key={`order-${activity.id}-${resetCounter}`}
             orderItems={orderItems}
             checked={checked}
-            savedOrder={loadDraft(currentUser?.id, activity.id)?.orderAnswers || savedProgress?.userAnswers}
+            savedOrder={initialDialogueOrder}
             isCompleted={savedProgress?.completed}
             savedScore={savedProgress?.score}
             onOrderChange={setOrderAnswers}
@@ -872,15 +889,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
             key={`match-${activity.id}-${resetCounter}`}
             pairs={matchingPairs}
             checked={checked}
-            savedAnswers={(() => {
-              const d = loadDraft(currentUser?.id, activity.id);
-              if (d?.matchingAnswers && d.matchingAnswers.length > 0) {
-                const map: Record<string, string> = {};
-                d.matchingAnswers.forEach((ans, idx) => { map[String(idx)] = ans; });
-                return map;
-              }
-              return savedProgress?.userAnswers;
-            })()}
+            savedAnswers={initialMatchingAnswers}
             isCompleted={savedProgress?.completed}
             savedScore={savedProgress?.score}
             onAnswersChange={setMatchingAnswers}

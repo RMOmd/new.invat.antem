@@ -105,13 +105,16 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
   hintTrigger
 }) => {
   const { t } = useLanguage();
+  const hasUserInteractedRef = React.useRef(false);
+
   // Initialize with saved order if available, otherwise deterministic shift
   const [items, setItems] = useState<OrderItem[]>(() => {
     return buildInitialItems(orderItems, savedOrder, isCompleted, savedScore);
   });
 
-  // Re-sync whenever orderItems, savedOrder, or completion status change
+  // Re-sync whenever orderItems, savedOrder, or completion status change (only if user hasn't actively interacted)
   useEffect(() => {
+    if (hasUserInteractedRef.current) return;
     setItems(buildInitialItems(orderItems, savedOrder, isCompleted, savedScore));
   }, [orderItems, savedOrder, isCompleted, savedScore]);
 
@@ -123,6 +126,7 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
   // Handle Hint: puts the first misplaced item into its correct slot
   useEffect(() => {
     if (hintTrigger === 0) return;
+    hasUserInteractedRef.current = true;
     setItems(prev => {
       const next = [...prev];
       for (let slot = 0; slot < orderItems.length; slot++) {
@@ -143,6 +147,7 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
 
   const moveUp = (idx: number) => {
     if (idx <= 0) return;
+    hasUserInteractedRef.current = true;
     setItems(prev => {
       const next = [...prev];
       const temp = next[idx];
@@ -154,6 +159,7 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
 
   const moveDown = (idx: number) => {
     if (idx >= items.length - 1) return;
+    hasUserInteractedRef.current = true;
     setItems(prev => {
       const next = [...prev];
       const temp = next[idx];
