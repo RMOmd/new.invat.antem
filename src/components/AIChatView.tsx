@@ -681,3 +681,4 @@ export const AIChatView: React.FC = () => {
     </div>
   );
 };
+

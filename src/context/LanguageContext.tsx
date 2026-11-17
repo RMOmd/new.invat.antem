@@ -219,6 +219,11 @@ export const translations: Record<Language, Record<string, string>> = {
     stats_weak_title: 'Exerciții ce necesită repetare (scor sub 80%)',
     stats_weak_empty: 'Felicitări! Nu aveți exerciții cu scor scăzut.',
     stats_all_title: 'Istoricul tuturor activităților completate',
+    stats_sections_title: 'Progresul pe unități și capitole',
+    stats_expand_all: 'Desfășoară toate',
+    stats_collapse_all: 'Restrânge toate',
+    stats_filter_all_units: 'Toate unitățile',
+    stats_filter_completed_only: 'Doar cu activități finalizate',
     stats_btn_repeat: 'Reia exercițiul',
 
     // Submissions View
@@ -484,6 +489,11 @@ export const translations: Record<Language, Record<string, string>> = {
     stats_weak_title: 'Упражнения для повторения (балл ниже 80%)',
     stats_weak_empty: 'Поздравляем! У вас нет упражнений с низким баллом.',
     stats_all_title: 'История всех завершённых заданий',
+    stats_sections_title: 'Прогресс по главам и разделам',
+    stats_expand_all: 'Развернуть все',
+    stats_collapse_all: 'Свернуть все',
+    stats_filter_all_units: 'Все главы',
+    stats_filter_completed_only: 'Только с выполненными',
     stats_btn_repeat: 'Повторить упражнение',
 
     // Submissions View
@@ -749,6 +759,11 @@ export const translations: Record<Language, Record<string, string>> = {
     stats_weak_title: 'Exercises to review (score below 80%)',
     stats_weak_empty: 'Congratulations! You have no exercises with low scores.',
     stats_all_title: 'History of all completed activities',
+    stats_sections_title: 'Progress by units and chapters',
+    stats_expand_all: 'Expand all',
+    stats_collapse_all: 'Collapse all',
+    stats_filter_all_units: 'All units',
+    stats_filter_completed_only: 'Completed only',
     stats_btn_repeat: 'Retake exercise',
 
     // Submissions View
