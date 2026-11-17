@@ -280,24 +280,27 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
                   : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
               }`}
             >
-              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-stretch gap-2.5 sm:gap-3">
                 {/* Left: Prompt (Question) */}
-                <div className="flex-1 p-3 bg-slate-50/90 border border-slate-200/90 rounded-xl flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-md bg-blue-100 text-blue-900 font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="w-full min-w-0 p-3 bg-slate-50/90 border border-slate-200/90 rounded-xl flex items-center gap-3 h-full">
+                  <span className="w-6 h-6 rounded-md bg-blue-100 text-blue-900 font-bold text-xs flex items-center justify-center shrink-0 self-center">
                     {idx + 1}
                   </span>
-                  <span className="text-sm sm:text-base font-semibold text-slate-900">
+                  <span
+                    className="text-sm sm:text-base font-semibold text-slate-900 leading-snug break-words min-w-0 flex-1"
+                    style={{ textWrap: 'balance' }}
+                  >
                     {pair.prompt}
                   </span>
                 </div>
 
                 {/* Center arrow icon */}
                 <div className="hidden md:flex items-center justify-center text-slate-400 px-1">
-                  <ArrowRightLeft className="w-4 h-4" />
+                  <ArrowRightLeft className="w-4 h-4 shrink-0" />
                 </div>
 
                 {/* Right: Answer Card with Controls */}
-                <div className={`flex-1 p-3 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                <div className={`w-full min-w-0 p-3 rounded-xl border flex items-center justify-between gap-2.5 transition-all h-full ${
                   isCorrect
                     ? 'bg-emerald-100/90 border-emerald-400 text-emerald-950 font-bold'
                     : isWrong
@@ -305,7 +308,10 @@ export const MatchingRunner: React.FC<MatchingRunnerProps> = ({
                     : 'bg-white border-blue-200 shadow-2xs text-slate-800'
                 }`}>
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-sm sm:text-base font-medium truncate">
+                    <span
+                      className="text-sm sm:text-base font-medium leading-snug break-words min-w-0 flex-1"
+                      style={{ textWrap: 'balance' }}
+                    >
                       {currentAnswer?.text}
                     </span>
                   </div>
