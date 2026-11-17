@@ -9,6 +9,13 @@ import {
   ChatMessageItem
 } from '../lib/gemini';
 import {
+  LIVE_UNLIMITED_MODELS,
+  LiveModelConfig,
+  sendLiveWebSocketMessage,
+  playNativePcmAudio,
+  stopNativeAudio
+} from '../lib/geminiLiveWebSocket';
+import {
   Sparkles,
   Send,
   Trash2,
@@ -40,55 +47,55 @@ export interface UnlimitedModel {
   description: string;
 }
 
-// STRICTLY the 6 unlimited models requested by the user
+// STRICTLY the 6 unlimited models from Google AI Studio Live API
 export const UNLIMITED_MODELS: UnlimitedModel[] = [
+  {
+    key: 'gemini-2.5-flash-native-audio',
+    name: 'Gemini 2.5 Flash Native Audio Dialog',
+    apiModel: 'gemini-2.5-flash-preview-tts',
+    candidateModels: ['gemini-2.5-flash-preview-tts', 'gemini-2.5-flash', 'gemini-flash-lite-latest'],
+    badge: 'Live • Unlimited (1M TPM)',
+    description: 'Нативный двусторонний аудио-диалог (Безлимит RPM / 1M TPM)'
+  },
   {
     key: 'gemini-3-flash-live',
     name: 'Gemini 3 Flash Live',
     apiModel: 'gemini-3-flash-preview',
     candidateModels: ['gemini-3-flash-preview', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'],
-    badge: 'Live',
-    description: 'Высокоскоростной живой диалог без лимитов'
-  },
-  {
-    key: 'gemini-3.5-transcribe-live',
-    name: 'Gemini 3.5 Transcribe Live',
-    apiModel: 'gemini-3.5-transcribe',
-    candidateModels: ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'],
-    badge: 'Transcribe Live',
-    description: 'Голосовой ввод и распознавание речи в реальном времени'
-  },
-  {
-    key: 'gemini-3.5-live-translate',
-    name: 'Gemini 3.5 Live Translate',
-    apiModel: 'gemini-3.5-flash',
-    candidateModels: ['gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'],
-    badge: 'Live Translate',
-    description: 'Синхронный перевод и объяснение грамматических правил'
+    badge: 'Live • Unlimited (65K TPM)',
+    description: 'Сверхбыстрый живой диалог 3.x (Безлимит RPM / 65K TPM)'
   },
   {
     key: 'gemini-3.8-live',
     name: 'Gemini 3.8 Live',
     apiModel: 'gemini-3.8-flash',
     candidateModels: ['gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'],
-    badge: 'Live 3.8',
-    description: 'Флагманский речевой интеллект нового поколения'
-  },
-  {
-    key: 'gemini-2.5-flash-native-audio',
-    name: 'Gemini 2.5 Flash Native Audio Dialog',
-    apiModel: 'gemini-2.5-flash-preview-tts',
-    candidateModels: ['gemini-2.5-flash-preview-tts', 'gemini-2.5-flash', 'gemini-flash-lite-latest'],
-    badge: 'Native Audio',
-    description: 'Нативный двусторонний аудио-диалог'
+    badge: 'Live 3.8 • Unlimited',
+    description: 'Флагманский речевой интеллект (Безлимит RPM / 65K TPM)'
   },
   {
     key: 'gemini-3.8-live-extended-thinking',
     name: 'Gemini 3.8 Live Extended Thinking',
     apiModel: 'gemini-3.8-flash',
     candidateModels: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-pro-latest'],
-    badge: 'Extended Thinking',
-    description: 'Глубокий анализ, рассуждения и методика преподавания'
+    badge: 'Thinking • Unlimited',
+    description: 'Глубокий анализ, рассуждения и методика (Безлимит RPM)'
+  },
+  {
+    key: 'gemini-3.5-live-translate',
+    name: 'Gemini 3.5 Live Translate',
+    apiModel: 'gemini-3.5-flash',
+    candidateModels: ['gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'],
+    badge: 'Translate • Unlimited',
+    description: 'Синхронный перевод и объяснения (Безлимит RPM / 20K TPM)'
+  },
+  {
+    key: 'gemini-3.5-transcribe-live',
+    name: 'Gemini 3.5 Transcribe Live',
+    apiModel: 'gemini-3.5-transcribe',
+    candidateModels: ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'],
+    badge: 'Transcribe • Unlimited',
+    description: 'Распознавание речи в реальном времени (Безлимит RPM / 20K TPM)'
   }
 ];
 
@@ -132,7 +139,7 @@ export const AIChatView: React.FC = () => {
   const { currentUser } = useAuth();
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'teacher';
 
-  const [selectedModelKey, setSelectedModelKey] = useState<string>('gemini-3-flash-live');
+  const [selectedModelKey, setSelectedModelKey] = useState<string>('gemini-2.5-flash-native-audio');
   const [selectedPromptId, setSelectedPromptId] = useState<string>('tutor_antem');
   const [systemPrompt, setSystemPrompt] = useState<string>(SYSTEM_PROMPTS[0].text);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -329,6 +336,7 @@ export const AIChatView: React.FC = () => {
   }, [currentlySpeakingId, isLiveCall, recognitionLang]);
 
   const stopSpeaking = () => {
+    stopNativeAudio();
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -473,28 +481,56 @@ export const AIChatView: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await sendChatMessage(
-        currentModelConfig.apiModel,
-        newHistory.map(m => ({ role: m.role, text: m.text })),
-        systemPrompt,
-        temperature,
-        currentModelConfig.candidateModels
-      );
+      const apiKey = getGeminiApiKey();
+      const liveConfig = LIVE_UNLIMITED_MODELS.find(m => m.key === selectedModelKey) || LIVE_UNLIMITED_MODELS[0];
+
+      let responseText = '';
+      let audioChunks: string[] = [];
+      let latency = 0;
+
+      try {
+        // Connect to Gemini Live API WebSocket (Unlimited pool)
+        const wsRes = await sendLiveWebSocketMessage(
+          apiKey,
+          liveConfig,
+          newHistory.map(m => ({ role: m.role, text: m.text })),
+          systemPrompt,
+          8000
+        );
+        responseText = wsRes.text;
+        audioChunks = wsRes.audioChunks;
+        latency = wsRes.latencyMs;
+      } catch (wsErr) {
+        console.warn('Live API WebSocket notice, falling back to REST candidate:', wsErr);
+        const restRes = await sendChatMessage(
+          currentModelConfig.apiModel,
+          newHistory.map(m => ({ role: m.role, text: m.text })),
+          systemPrompt,
+          temperature,
+          currentModelConfig.candidateModels
+        );
+        responseText = restRes.text;
+        latency = restRes.latencyMs;
+      }
 
       const botMsgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const botMsg: ChatMessageItem = {
         id: botMsgId,
         role: 'model',
-        text: res.text,
+        text: responseText,
         timestamp: Date.now(),
         modelUsed: currentModelConfig.name,
-        latencyMs: res.latencyMs
+        latencyMs: latency
       };
 
       setMessages(prev => [...prev, botMsg]);
 
       if (autoSpeak) {
-        speakText(res.text, botMsgId);
+        if (audioChunks.length > 0) {
+          playNativePcmAudio(audioChunks);
+        } else {
+          speakText(responseText, botMsgId);
+        }
       }
     } catch (err: any) {
       const errorMsg: ChatMessageItem = {
@@ -576,13 +612,37 @@ export const AIChatView: React.FC = () => {
     messagesRef.current = currentHistory;
 
     try {
-      const res = await sendChatMessage(
-        currentModelConfig.apiModel,
-        currentHistory.map(m => ({ role: m.role, text: m.text })),
-        systemPrompt,
-        temperature,
-        currentModelConfig.candidateModels
-      );
+      const apiKey = getGeminiApiKey();
+      const liveConfig = LIVE_UNLIMITED_MODELS.find(m => m.key === selectedModelKey) || LIVE_UNLIMITED_MODELS[0];
+
+      let responseText = '';
+      let audioChunks: string[] = [];
+      let latency = 0;
+
+      try {
+        // Connect to Gemini Live API WebSocket (Unlimited pool)
+        const wsRes = await sendLiveWebSocketMessage(
+          apiKey,
+          liveConfig,
+          currentHistory.map(m => ({ role: m.role, text: m.text })),
+          systemPrompt,
+          8000
+        );
+        responseText = wsRes.text;
+        audioChunks = wsRes.audioChunks;
+        latency = wsRes.latencyMs;
+      } catch (wsErr) {
+        console.warn('Live API WebSocket notice, falling back to REST candidate:', wsErr);
+        const restRes = await sendChatMessage(
+          currentModelConfig.apiModel,
+          currentHistory.map(m => ({ role: m.role, text: m.text })),
+          systemPrompt,
+          temperature,
+          currentModelConfig.candidateModels
+        );
+        responseText = restRes.text;
+        latency = restRes.latencyMs;
+      }
 
       if (!isCallActiveRef.current) return;
 
@@ -590,22 +650,22 @@ export const AIChatView: React.FC = () => {
       const botMsg: ChatMessageItem = {
         id: botMsgId,
         role: 'model',
-        text: res.text,
+        text: responseText,
         timestamp: Date.now(),
         modelUsed: currentModelConfig.name,
-        latencyMs: res.latencyMs
+        latencyMs: latency
       };
 
       const updatedHistory = [...currentHistory, botMsg];
       setMessages(updatedHistory);
       messagesRef.current = updatedHistory;
-      setCallTranscriptAi(res.text);
+      setCallTranscriptAi(responseText);
 
-      // Now speak the answer out loud
+      // Speak response: Native 24kHz audio or Web Speech synthesis fallback
       callStatusRef.current = 'speaking';
       setCallStatus('speaking');
-      speakText(res.text, botMsgId, () => {
-        // When AI finishes speaking, immediately start listening to user again
+
+      const onSpeakingDone = () => {
         if (isCallActiveRef.current) {
           callStatusRef.current = 'listening';
           setCallStatus('listening');
@@ -613,7 +673,13 @@ export const AIChatView: React.FC = () => {
           accumulatedTranscriptRef.current = '';
           restartLiveRecognition();
         }
-      });
+      };
+
+      if (audioChunks.length > 0) {
+        playNativePcmAudio(audioChunks, onSpeakingDone);
+      } else {
+        speakText(responseText, botMsgId, onSpeakingDone);
+      }
     } catch (err: any) {
       if (!isCallActiveRef.current) return;
       const errorText = `Nu am putut procesa răspunsul: ${err.message}`;
