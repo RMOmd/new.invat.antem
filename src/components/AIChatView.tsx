@@ -335,6 +335,48 @@ export const AIChatView: React.FC = () => {
     setCurrentlySpeakingId(null);
   };
 
+  // Helper to extract clean, deduplicated speech transcript across all browsers (especially mobile Android Chrome)
+  const extractCleanTranscript = (event: any): string => {
+    if (!event || !event.results) return '';
+
+    let finalResult = '';
+    let interimResult = '';
+
+    for (let i = 0; i < event.results.length; ++i) {
+      const res = event.results[i];
+      if (!res || !res[0]) continue;
+      const chunk = (res[0].transcript || '').trim();
+      if (!chunk) continue;
+
+      if (res.isFinal) {
+        if (!finalResult) {
+          finalResult = chunk;
+        } else if (!finalResult.endsWith(chunk) && !chunk.startsWith(finalResult)) {
+          finalResult = `${finalResult} ${chunk}`;
+        } else if (chunk.length > finalResult.length && chunk.startsWith(finalResult)) {
+          finalResult = chunk;
+        }
+      } else {
+        interimResult = chunk;
+      }
+    }
+
+    let combined = '';
+    if (finalResult && interimResult) {
+      if (interimResult.startsWith(finalResult)) {
+        combined = interimResult;
+      } else if (finalResult.endsWith(interimResult)) {
+        combined = finalResult;
+      } else {
+        combined = `${finalResult} ${interimResult}`;
+      }
+    } else {
+      combined = finalResult || interimResult;
+    }
+
+    return combined.replace(/\s+/g, ' ').trim();
+  };
+
   // Turn-based mic button toggle
   const toggleListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -345,8 +387,11 @@ export const AIChatView: React.FC = () => {
 
     if (isListening && recognitionRef.current) {
       try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
         recognitionRef.current.stop();
       } catch (e) {}
+      recognitionRef.current = null;
       setIsListening(false);
       return;
     }
@@ -358,24 +403,27 @@ export const AIChatView: React.FC = () => {
       recognition.lang = recognitionLang;
       recognition.continuous = false;
       recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsListening(true);
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((res: any) => res[0]?.transcript || '')
-          .join('');
-        setInputText(transcript);
+        const text = extractCleanTranscript(event);
+        if (text) {
+          setInputText(text);
+        }
       };
 
       recognition.onerror = () => {
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognition.onend = () => {
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognitionRef.current = recognition;
@@ -461,6 +509,7 @@ export const AIChatView: React.FC = () => {
   const commitUserSpeech = (phrase: string) => {
     if (callSilenceTimerRef.current) {
       clearTimeout(callSilenceTimerRef.current);
+      callSilenceTimerRef.current = null;
     }
     if (!isCallActiveRef.current || callStatusRef.current !== 'listening') return;
 
@@ -470,21 +519,25 @@ export const AIChatView: React.FC = () => {
     callStatusRef.current = 'thinking';
     setCallStatus('thinking');
 
+    // Cleanly detach and abort voice recognition so Android/Chrome does not fire onend/restart
     if (callRecognitionRef.current) {
       try {
+        callRecognitionRef.current.onend = null;
+        callRecognitionRef.current.onerror = null;
+        callRecognitionRef.current.onresult = null;
         callRecognitionRef.current.abort();
       } catch (e) {}
+      callRecognitionRef.current = null;
     }
 
     processLiveCallTurn(clean);
   };
 
   const interruptAiAndListen = () => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    stopSpeaking();
     if (callSilenceTimerRef.current) {
       clearTimeout(callSilenceTimerRef.current);
+      callSilenceTimerRef.current = null;
     }
     if (isCallActiveRef.current) {
       callStatusRef.current = 'listening';
@@ -579,8 +632,12 @@ export const AIChatView: React.FC = () => {
 
     if (callRecognitionRef.current) {
       try {
+        callRecognitionRef.current.onend = null;
+        callRecognitionRef.current.onerror = null;
+        callRecognitionRef.current.onresult = null;
         callRecognitionRef.current.abort();
       } catch (e) {}
+      callRecognitionRef.current = null;
     }
 
     try {
@@ -602,16 +659,11 @@ export const AIChatView: React.FC = () => {
       recognition.onresult = (event: any) => {
         if (!isCallActiveRef.current || callStatusRef.current !== 'listening') return;
 
-        let fullTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          fullTranscript += event.results[i][0].transcript;
-        }
-        fullTranscript = fullTranscript.trim();
+        const text = extractCleanTranscript(event);
+        if (!text) return;
 
-        if (!fullTranscript) return;
-
-        accumulatedTranscriptRef.current = fullTranscript;
-        setCallTranscriptUser(fullTranscript);
+        accumulatedTranscriptRef.current = text;
+        setCallTranscriptUser(text);
 
         // Reset silence timer on every spoken syllable/word
         if (callSilenceTimerRef.current) {
@@ -627,24 +679,41 @@ export const AIChatView: React.FC = () => {
       };
 
       recognition.onerror = (e: any) => {
-        if (isCallActiveRef.current && e.error !== 'aborted') {
-          setTimeout(() => {
-            if (isCallActiveRef.current && callStatusRef.current === 'listening') {
-              restartLiveRecognition();
-            }
-          }, 300);
+        if (!isCallActiveRef.current || e.error === 'aborted') return;
+
+        // If Android times out with no-speech but user already spoke something, commit it!
+        if (e.error === 'no-speech') {
+          const spoken = accumulatedTranscriptRef.current.trim();
+          if (spoken.length > 0) {
+            commitUserSpeech(spoken);
+            return;
+          }
         }
+
+        // Never restart in a fast loop (prevents Android chimes/beeps). Wait 1.5s
+        setTimeout(() => {
+          if (isCallActiveRef.current && callStatusRef.current === 'listening') {
+            restartLiveRecognition();
+          }
+        }, 1500);
       };
 
       recognition.onend = () => {
-        // If recognition closed automatically by Chrome but call is active and listening, loop smoothly
-        if (isCallActiveRef.current && callStatusRef.current === 'listening' && !isCallMutedRef.current) {
-          setTimeout(() => {
-            if (isCallActiveRef.current && callStatusRef.current === 'listening') {
-              restartLiveRecognition();
-            }
-          }, 150);
+        if (!isCallActiveRef.current || callStatusRef.current !== 'listening' || isCallMutedRef.current) return;
+
+        // If recognition closed automatically by Android/Chrome but user spoke, commit immediately!
+        const spoken = accumulatedTranscriptRef.current.trim();
+        if (spoken.length > 0) {
+          commitUserSpeech(spoken);
+          return;
         }
+
+        // If completely empty, pause before restarting to avoid repetitive Android system dings
+        setTimeout(() => {
+          if (isCallActiveRef.current && callStatusRef.current === 'listening') {
+            restartLiveRecognition();
+          }
+        }, 1500);
       };
 
       callRecognitionRef.current = recognition;
@@ -664,6 +733,17 @@ export const AIChatView: React.FC = () => {
     if (!SpeechRecognition) {
       alert('Recunoașterea vocală nu este suportată în acest browser. Folosiți Google Chrome sau Microsoft Edge.');
       return;
+    }
+
+    stopSpeaking();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+      setIsListening(false);
     }
 
     setIsLiveCall(true);
@@ -693,19 +773,25 @@ export const AIChatView: React.FC = () => {
   };
 
   const endLiveCall = () => {
-    setIsLiveCall(false);
     isCallActiveRef.current = false;
     callStatusRef.current = 'connecting';
     setCallStatus('connecting');
+    setIsLiveCall(false);
     stopSpeaking();
+
+    if (callSilenceTimerRef.current) {
+      clearTimeout(callSilenceTimerRef.current);
+      callSilenceTimerRef.current = null;
+    }
 
     if (callRecognitionRef.current) {
       try {
+        callRecognitionRef.current.onend = null;
+        callRecognitionRef.current.onerror = null;
+        callRecognitionRef.current.onresult = null;
         callRecognitionRef.current.abort();
       } catch (e) {}
-    }
-    if (callSilenceTimerRef.current) {
-      clearTimeout(callSilenceTimerRef.current);
+      callRecognitionRef.current = null;
     }
   };
 
