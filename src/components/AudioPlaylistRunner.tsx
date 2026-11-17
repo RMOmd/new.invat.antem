@@ -46,7 +46,7 @@ export const AudioPlaylistRunner: React.FC<AudioPlaylistRunnerProps> = ({
 
           <AudioPlayer
             key={currentTrack.audioUrl}
-            src={`media/${currentTrack.audioUrl}`}
+            src={currentTrack.audioUrl}
             title={currentTrack.title}
           />
         </div>

@@ -423,9 +423,9 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       return;
     }
 
-    const audioSrc = matchedFile.startsWith('media/') || matchedFile.startsWith('http')
+    const audioSrc = matchedFile.startsWith('http')
       ? matchedFile
-      : `media/${matchedFile}`;
+      : `media/${matchedFile.replace(/^(\/?media\/)+/i, '')}`;
 
     // Target element to visually highlight
     let targetEl: HTMLElement | null = null;
@@ -960,7 +960,9 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
 
       {/* Lesson Audio Player(s) at the top ONLY if audio exists, is not a playlist, and is not already embedded inline in bodyHtml */}
       {!isPlaylistType && audioSlots.length === 0 && audioFiles.map((audioFn, idx) => {
-        const audioSrc = audioFn.startsWith('media/') || audioFn.startsWith('http') ? audioFn : `media/${audioFn}`;
+        const audioSrc = audioFn.startsWith('http')
+          ? audioFn
+          : `media/${audioFn.replace(/^(\/?media\/)+/i, '')}`;
         const title = audioFiles.length > 1
           ? `Ascultă materialul audio (${idx + 1}/${audioFiles.length})`
           : 'Ascultă înregistrarea audio';

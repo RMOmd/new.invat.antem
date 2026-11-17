@@ -13,14 +13,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title }) => {
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
 
-  // Clean relative path if necessary
+  // Clean relative path if necessary (safely strips duplicate 'media/' or leading slashes)
   const audioSrc = !src 
     ? '' 
     : (src.startsWith('http') || src.startsWith('data:') || src.startsWith('blob:') 
         ? src 
-        : src.startsWith('media/') 
-        ? src 
-        : `media/${src}`);
+        : `media/${src.replace(/^(\/?media\/)+/i, '')}`);
 
   // Stop when other audio players start playing
   useEffect(() => {
