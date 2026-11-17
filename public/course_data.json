@@ -4475,7 +4475,7 @@
           "quizQuestions": [
             {
               "id": 0,
-              "question": "1. Adevărat sau fals?1. Bulevardul Ștefan cel Mare este în Chișinău.",
+              "question": "1. Bulevardul Ștefan cel Mare este în Chișinău.",
               "options": [
                 {
                   "ansIdx": 0,
@@ -5155,7 +5155,7 @@
           "quizQuestions": [
             {
               "id": 0,
-              "question": "1. Adevărat sau fals?1. Orașul Chișinău este mic, dar frumos.",
+              "question": "1. Orașul Chișinău este mic, dar frumos.",
               "options": [
                 {
                   "ansIdx": 0,
@@ -14526,7 +14526,7 @@
           "quizQuestions": [
             {
               "id": 0,
-              "question": "1. Citiţi dialogul.Plecăm în călătorie!Dan, Amani, Nadejda și Farik sunt prieteni. Ei vor să petreacă împreună timpul liber.– Unde aţi vrea să mergem?– Propun să mergem la Grădina Botanică. Este un loc foarte frumos.– Bravo, Amani! Este o idee foarte bună!– Aş vrea să ne întâlnim la staţia de troleibuze. Cu ce mergem?, întreabă Dan.– Dacă am lua un troleibuz, am pierde mai mult timp. Luăm un microbuz. E bine?– Bine, Farik. Ne întâlnim mâine la ora 10.00 la staţia Bulevardul Dacia.5. Adevărat sau fals?1. Prietenii vor să petreacă împreună timpul liber.",
+              "question": "1. Prietenii vor să petreacă împreună timpul liber.",
               "options": [
                 {
                   "ansIdx": 0,
@@ -14591,7 +14591,7 @@
           ],
           "media": [],
           "audioFiles": [],
-          "readingHtml": ""
+          "readingHtml": "<div style=\"background-color: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; margin-bottom: 1.5rem;\"><h4 style=\"font-weight: 700; color: #1e293b; font-size: 1.1rem; margin-bottom: 0.75rem;\">Plecăm în călătorie!</h4><p style=\"color: #334155; line-height: 1.6; margin-bottom: 0.5rem;\">Dan, Amani, Nadejda și Farik sunt prieteni. Ei vor să petreacă împreună timpul liber.</p><p style=\"color: #334155; line-height: 1.6; margin-bottom: 0.25rem;\">– Unde aţi vrea să mergem?</p><p style=\"color: #334155; line-height: 1.6; margin-bottom: 0.25rem;\">– Propun să mergem la Grădina Botanică. Este un loc foarte frumos.</p><p style=\"color: #334155; line-height: 1.6; margin-bottom: 0.25rem;\">– Bravo, Amani! Este o idee foarte bună!</p><p style=\"color: #334155; line-height: 1.6; margin-bottom: 0.25rem;\">– Aş vrea să ne întâlnim la staţia de troleibuze. Cu ce mergem?, întreabă Dan.</p><p style=\"color: #334155; line-height: 1.6; margin-bottom: 0.25rem;\">– Dacă am lua un troleibuz, am pierde mai mult timp. Luăm un microbuz. E bine?</p><p style=\"color: #334155; line-height: 1.6; margin-bottom: 0.25rem;\">– Bine, Farik. Ne întâlnim mâine la ora 10.00 la staţia Bulevardul Dacia.</p></div>"
         },
         {
           "id": "2486",
