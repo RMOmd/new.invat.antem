@@ -1,21 +1,23 @@
 import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { BookOpen, BarChart3, Send, User } from 'lucide-react';
+import { BookOpen, BarChart3, Send, User, Sparkles } from 'lucide-react';
 
-export type TabType = 'course' | 'stats' | 'submissions' | 'profile';
+export type TabType = 'course' | 'stats' | 'submissions' | 'profile' | 'ai_chat';
 
 interface BottomNavProps {
   currentTab: TabType;
   onTabChange: (tab: TabType) => void;
   pendingSubmissionsCount?: number;
   badgeColor?: 'rose' | 'emerald';
+  isTeacherOrAdmin?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   currentTab,
   onTabChange,
   pendingSubmissionsCount = 0,
-  badgeColor = 'rose'
+  badgeColor = 'rose',
+  isTeacherOrAdmin = false
 }) => {
   const { t } = useLanguage();
 
@@ -23,12 +25,17 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'course' as TabType, label: t('tab_course'), icon: BookOpen },
     { id: 'stats' as TabType, label: t('tab_stats'), icon: BarChart3 },
     { id: 'submissions' as TabType, label: t('tab_submissions'), icon: Send, badge: pendingSubmissionsCount },
+    ...(isTeacherOrAdmin
+      ? [{ id: 'ai_chat' as TabType, label: t('tab_ai_chat'), icon: Sparkles }]
+      : []),
     { id: 'profile' as TabType, label: t('tab_profile'), icon: User },
   ];
 
+  const colClass = tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4';
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-30 sm:hidden">
-      <div className="grid grid-cols-4 h-16">
+      <div className={`grid ${colClass} h-16`}>
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;

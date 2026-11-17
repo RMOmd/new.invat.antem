@@ -9,8 +9,9 @@ import { ExerciseRunner } from './components/ExerciseRunner';
 import { StatsView } from './components/StatsView';
 import { SubmissionsView } from './components/SubmissionsView';
 import { ProfileView } from './components/ProfileView';
+import { AIChatView } from './components/AIChatView';
 import { AuthView } from './components/AuthView';
-import { Loader2, ArrowLeft, BookOpen, BarChart3, Send } from 'lucide-react';
+import { Loader2, ArrowLeft, BookOpen, BarChart3, Send, Sparkles } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { t } = useLanguage();
@@ -231,6 +232,26 @@ const AppContent: React.FC = () => {
               </span>
             )}
           </button>
+
+          {isTeacher && (
+            <button
+              onClick={() => {
+                setCurrentTab('ai_chat');
+                handleBackToCourse();
+              }}
+              className={`flex items-center gap-2 px-3 border-b-2 text-sm font-semibold transition-colors ${
+                currentTab === 'ai_chat'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              <span>{t('nav_ai_chat')}</span>
+              <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-bold">
+                Lab
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -280,6 +301,8 @@ const AppContent: React.FC = () => {
 
             {currentTab === 'submissions' && <SubmissionsView courseData={courseData} />}
 
+            {currentTab === 'ai_chat' && isTeacher && <AIChatView />}
+
             {currentTab === 'profile' && (
               <ProfileView courseData={courseData} />
             )}
@@ -298,6 +321,7 @@ const AppContent: React.FC = () => {
           }}
           pendingSubmissionsCount={submissionsBadgeCount}
           badgeColor={isTeacher ? 'rose' : 'emerald'}
+          isTeacherOrAdmin={isTeacher}
         />
       )}
     </div>

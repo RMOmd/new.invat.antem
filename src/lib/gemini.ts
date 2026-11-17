@@ -251,3 +251,86 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
 
   throw lastError || new Error('Nu s-a putut conecta la serviciul Gemini AI.');
 }
+
+export interface ChatMessageItem {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+  modelUsed?: string;
+  latencyMs?: number;
+  error?: string;
+}
+
+/**
+ * Fetches all available Gemini models currently active for this API key.
+ */
+export async function fetchAvailableGeminiModels(): Promise<string[]> {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) throw new Error('Cheia API Gemini nu este configurată.');
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return (data.models || [])
+    .map((m: any) => (m.name || '').replace(/^models\//, ''))
+    .filter((name: string) => name.length > 0)
+    .sort();
+}
+
+/**
+ * Sends a multi-turn chat message to any selected Gemini model.
+ */
+export async function sendChatMessage(
+  model: string,
+  messages: { role: 'user' | 'model'; text: string }[],
+  systemInstruction?: string,
+  temperature: number = 0.7
+): Promise<{ text: string; latencyMs: number; modelUsed: string }> {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) throw new Error('Cheia API Gemini nu este configurată.');
+
+  const startTime = Date.now();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const payload: any = {
+    contents: messages.map(m => ({
+      role: m.role,
+      parts: [{ text: m.text }]
+    })),
+    generationConfig: {
+      temperature
+    }
+  };
+
+  if (systemInstruction && systemInstruction.trim()) {
+    payload.systemInstruction = {
+      parts: [{ text: systemInstruction.trim() }]
+    };
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const latencyMs = Date.now() - startTime;
+
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    const errMsg = errJson.error?.message || `HTTP ${res.status}`;
+    throw new Error(`[${model}] ${errMsg}`);
+  }
+
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error(`[${model}] Răspuns gol primit de la model.`);
+  }
+
+  return { text, latencyMs, modelUsed: model };
+}
