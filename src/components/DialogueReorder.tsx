@@ -90,8 +90,8 @@ const buildInitialItems = (
   const defaultList: OrderItem[] = listItems.map((text, origIdx) => ({ origIdx, text }));
 
   const hasSavedAnswers = saved && (
-    Array.isArray(saved) 
-      ? saved.length > 0 
+    Array.isArray(saved)
+      ? saved.length > 0
       : Object.keys(saved).length > 0 && Object.values(saved).some(v => typeof v === 'string' && v.trim().length > 0)
   );
 
@@ -259,22 +259,20 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
           return (
             <div
               key={`dialogue-item-${item.origIdx}`}
-              className={`p-3 sm:p-4 rounded-xl border flex items-center justify-between gap-3 transition-all ${
-                isCorrectPosition
+              className={`p-3 sm:p-4 rounded-xl border flex items-center justify-between gap-3 transition-all ${isCorrectPosition
                   ? 'bg-emerald-50/80 border-emerald-400 text-emerald-950 shadow-2xs'
                   : isWrongPosition
-                  ? 'bg-rose-50/80 border-rose-300 text-rose-950'
-                  : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
-              }`}
+                    ? 'bg-rose-50/80 border-rose-300 text-rose-950'
+                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 ${
-                  isCorrectPosition
+                <span className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 ${isCorrectPosition
                     ? 'bg-emerald-200 text-emerald-900'
                     : isWrongPosition
-                    ? 'bg-rose-200 text-rose-900'
-                    : 'bg-slate-100 text-slate-700'
-                }`}>
+                      ? 'bg-rose-200 text-rose-900'
+                      : 'bg-slate-100 text-slate-700'
+                  }`}>
                   {idx + 1}.
                 </span>
                 <span className="text-sm sm:text-base font-medium select-none break-words">
@@ -297,11 +295,10 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
                   type="button"
                   onClick={() => moveUp(idx)}
                   disabled={idx === 0}
-                  className={`p-2 rounded-lg border transition-all ${
-                    idx === 0
+                  className={`p-2 rounded-lg border transition-all ${idx === 0
                       ? 'border-slate-100 text-slate-300 cursor-not-allowed'
                       : 'border-slate-200 hover:bg-slate-100 text-slate-700 active:scale-95'
-                  }`}
+                    }`}
                   title="Mută mai sus"
                 >
                   <ArrowUp className="w-4 h-4" />
@@ -310,11 +307,10 @@ export const DialogueReorder: React.FC<DialogueReorderProps> = ({
                   type="button"
                   onClick={() => moveDown(idx)}
                   disabled={idx === items.length - 1}
-                  className={`p-2 rounded-lg border transition-all ${
-                    idx === items.length - 1
+                  className={`p-2 rounded-lg border transition-all ${idx === items.length - 1
                       ? 'border-slate-100 text-slate-300 cursor-not-allowed'
                       : 'border-slate-200 hover:bg-slate-100 text-slate-700 active:scale-95'
-                  }`}
+                    }`}
                   title="Mută mai jos"
                 >
                   <ArrowDown className="w-4 h-4" />

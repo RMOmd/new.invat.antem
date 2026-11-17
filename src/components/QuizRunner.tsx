@@ -37,6 +37,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
           const isCorrect = checked && selectedOption?.isCorrect;
           const isWrong = checked && hasSelected && !selectedOption?.isCorrect;
 
+          // Strip redundant leading numbers or duplicated exercise title prefixes if present
+          const cleanQuestionText = q.question
+            .replace(/^\s*\d+[\.\)]\s*(?:(?:Adevărat\s+sau\s+fals|Citiți\s+dialogul|Citiți\s+textul)[^\.\?\!]*[\.\?\!]\s*)?/i, '')
+            .replace(/^\s*(?:Adevărat\s+sau\s+fals|Citiți\s+dialogul|Citiți\s+textul)[^\.\?\!]*[\.\?\!]\s*/i, '')
+            .replace(/^\s*\d+[\.\)]\s*/, '')
+            .trim();
+
           return (
             <div
               key={`quiz-q-${q.id}`}
@@ -60,7 +67,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                     {qIndex + 1}
                   </span>
                   <h4 className="text-base sm:text-lg font-semibold text-slate-900 leading-snug">
-                    {q.question}
+                    {cleanQuestionText || q.question}
                   </h4>
                 </div>
 

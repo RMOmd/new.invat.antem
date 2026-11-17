@@ -188,6 +188,9 @@ export const translations: Record<Language, Record<string, string>> = {
     ai_use_improved: 'Copiază textul corectat',
     ai_copied: 'Copiat!',
     ai_teacher_copilot: '✨ Evaluează cu AI',
+    ai_status_connecting: 'Conectare la modelul {model}...',
+    ai_status_fallback: 'Modelul {prevModel} este suprasolicitat. Comutare automată pe rezerva {model}...',
+    ai_status_generating: 'Model conectat ({model}). Se generează analiza pedagogică...',
 
     // Specialized Runners (Quiz, Dialogue, Matching, Audio)
     quiz_title: 'Răspundeți la întrebări:',
@@ -448,6 +451,9 @@ export const translations: Record<Language, Record<string, string>> = {
     ai_use_improved: 'Скопировать исправленный текст',
     ai_copied: 'Скопировано!',
     ai_teacher_copilot: '✨ Проверить через AI',
+    ai_status_connecting: 'Подключение к модели {model}...',
+    ai_status_fallback: 'Модель {prevModel} перегружена. Переключение на резервную {model}...',
+    ai_status_generating: 'Модель подключена ({model}). Формирование педагогического отзыва...',
 
     // Specialized Runners (Quiz, Dialogue, Matching, Audio)
     quiz_title: 'Ответьте на вопросы:',
@@ -708,6 +714,9 @@ export const translations: Record<Language, Record<string, string>> = {
     ai_use_improved: 'Copy corrected text',
     ai_copied: 'Copied!',
     ai_teacher_copilot: '✨ Grade with AI',
+    ai_status_connecting: 'Connecting to {model}...',
+    ai_status_fallback: 'Model {prevModel} is busy. Switching to backup {model}...',
+    ai_status_generating: 'Model connected ({model}). Generating pedagogical feedback...',
 
     // Specialized Runners (Quiz, Dialogue, Matching, Audio)
     quiz_title: 'Answer the questions:',

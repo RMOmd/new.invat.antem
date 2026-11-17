@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { AssignmentSubmission, CourseData } from '../types/course';
-import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
+import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey, AIEvalStatus } from '../lib/gemini';
 import { getTelegramConfig, saveTelegramConfig, isTelegramConfigured, sendTelegramMessage, notifyReviewedSubmission } from '../lib/telegram';
 import { StudentCardModal, StudentCardTarget } from './StudentCardModal';
-import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw, Bell, Settings, Check, X, ChevronDown, ChevronUp, ChevronsUpDown, Filter, FileEdit } from 'lucide-react';
+import { CheckCircle2, Clock, MessageSquare, Send, Award, User, Sparkles, Lightbulb, AlertCircle, Eye, Trash2, RefreshCw, Bell, Settings, Check, X, ChevronDown, ChevronUp, ChevronsUpDown, Filter, FileEdit, Loader2 } from 'lucide-react';
 
 interface ParsedFeedback {
   summary: string;
@@ -161,6 +161,7 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
   const [gradeInput, setGradeInput] = useState<number>(10);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiStatus, setAiStatus] = useState<AIEvalStatus | null>(null);
   const [isSavingReview, setIsSavingReview] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -688,8 +689,14 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
                                 onClick={async () => {
                                   setIsAiLoading(true);
                                   setAiError(null);
+                                  setAiStatus(null);
                                   try {
-                                    const res = await evaluateEssayWithGemini(sub.activityTitle, sub.submissionText);
+                                    const res = await evaluateEssayWithGemini(
+                                      sub.activityTitle,
+                                      sub.submissionText,
+                                      undefined,
+                                      { onStatusChange: setAiStatus }
+                                    );
                                     setGradeInput(res.grade);
                                     let feedback = `${res.summary}\n\n`;
                                     if (res.corrections && res.corrections.length > 0) {
@@ -714,6 +721,30 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
                                 {isAiLoading ? t('ai_checking') : t('ai_teacher_copilot')}
                               </button>
                             </div>
+
+                            {/* Live AI Status and Model Fallback Indicator */}
+                            {isAiLoading && aiStatus && (
+                              <div className="p-2.5 bg-indigo-50/95 border border-indigo-200 rounded-lg text-xs text-indigo-900 flex items-center gap-2 shadow-2xs transition-all">
+                                <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0" />
+                                <span className="flex-1 min-w-0">
+                                  {aiStatus.type === 'connecting' && (
+                                    <span className="font-medium">
+                                      {t('ai_status_connecting', { model: aiStatus.model })}
+                                    </span>
+                                  )}
+                                  {aiStatus.type === 'fallback' && (
+                                    <span className="font-semibold text-amber-800">
+                                      {t('ai_status_fallback', { prevModel: aiStatus.prevModel || 'model', model: aiStatus.model })}
+                                    </span>
+                                  )}
+                                  {aiStatus.type === 'generating' && (
+                                    <span className="font-medium text-emerald-800">
+                                      {t('ai_status_generating', { model: aiStatus.model })}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
 
                             {aiError && (
                               <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 flex items-center gap-2">

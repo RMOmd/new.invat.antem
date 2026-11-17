@@ -54,6 +54,16 @@ export function clearGeminiApiKey() {
   localStorage.removeItem(GEMINI_LOCAL_KEY);
 }
 
+export interface AIEvalStatus {
+  type: 'connecting' | 'fallback' | 'generating';
+  model: string;
+  prevModel?: string;
+}
+
+export interface AIEvalOptions {
+  onStatusChange?: (status: AIEvalStatus) => void;
+}
+
 const CANDIDATE_MODELS = [
   // Fast, high-capacity Lite models that avoid Google 503 queue spikes
   'gemini-flash-lite-latest',
@@ -72,7 +82,8 @@ const CANDIDATE_MODELS = [
 export async function evaluateEssayWithGemini(
   activityTitle: string,
   studentText: string,
-  instructions?: string
+  instructions?: string,
+  options?: AIEvalOptions
 ): Promise<AIEvaluationResult> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
@@ -127,7 +138,15 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
 
   let lastError: Error | null = null;
 
-  for (const model of CANDIDATE_MODELS) {
+  for (let i = 0; i < CANDIDATE_MODELS.length; i++) {
+    const model = CANDIDATE_MODELS[i];
+    const nextModel = i < CANDIDATE_MODELS.length - 1 ? CANDIDATE_MODELS[i + 1] : undefined;
+
+    options?.onStatusChange?.({
+      type: 'connecting',
+      model
+    });
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
@@ -158,16 +177,37 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
         const errMsg = errJson.error?.message || `HTTP ${response.status}`;
         console.warn(`Model ${model} failed (${response.status}): ${errMsg}. Falling back to next model...`);
         lastError = new Error(`Model ${model}: ${errMsg}`);
+
+        if (nextModel) {
+          options?.onStatusChange?.({
+            type: 'fallback',
+            model: nextModel,
+            prevModel: model
+          });
+        }
+
         // brief pause before trying next candidate model to avoid rapid request collisions
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 400));
         continue;
       }
+
+      options?.onStatusChange?.({
+        type: 'generating',
+        model
+      });
 
       const data = await response.json();
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) {
         console.warn(`Model ${model} returned empty response. Falling back to next model...`);
         lastError = new Error(`Model ${model} returned empty response.`);
+        if (nextModel) {
+          options?.onStatusChange?.({
+            type: 'fallback',
+            model: nextModel,
+            prevModel: model
+          });
+        }
         continue;
       }
 
@@ -183,6 +223,13 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
       } catch (parseErr: any) {
         console.warn(`Model ${model} returned invalid JSON: ${parseErr.message}. Falling back to next model...`);
         lastError = new Error(`Model ${model} JSON parse error: ${parseErr.message}`);
+        if (nextModel) {
+          options?.onStatusChange?.({
+            type: 'fallback',
+            model: nextModel,
+            prevModel: model
+          });
+        }
         continue;
       }
     } catch (err: any) {
@@ -191,7 +238,14 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
       const msg = isTimeout ? 'Timed out after 12s' : err.message;
       console.warn(`Model ${model} error (${msg}). Falling back to next model...`);
       lastError = new Error(`Model ${model}: ${msg}`);
-      await new Promise(r => setTimeout(r, 200));
+      if (nextModel) {
+        options?.onStatusChange?.({
+          type: 'fallback',
+          model: nextModel,
+          prevModel: model
+        });
+      }
+      await new Promise(r => setTimeout(r, 300));
     }
   }
 

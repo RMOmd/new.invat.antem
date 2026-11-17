@@ -8,8 +8,8 @@ import { DialogueReorder } from './DialogueReorder';
 import { QuizRunner } from './QuizRunner';
 import { MatchingRunner } from './MatchingRunner';
 import { AudioPlaylistRunner } from './AudioPlaylistRunner';
-import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey } from '../lib/gemini';
-import { CheckCircle2, RotateCcw, Lightbulb, Send, Award, ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles, Copy, Check, AlertCircle } from 'lucide-react';
+import { evaluateEssayWithGemini, isGeminiConfigured, saveGeminiApiKey, AIEvalStatus } from '../lib/gemini';
+import { CheckCircle2, RotateCcw, Lightbulb, Send, Award, ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles, Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface ExerciseDraft {
@@ -160,6 +160,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   // AI Evaluation state
   const [isAiEvaluating, setIsAiEvaluating] = useState(false);
   const [aiEvaluation, setAiEvaluation] = useState<AIEvaluationResult | null>(null);
+  const [aiStatus, setAiStatus] = useState<AIEvalStatus | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [copiedImproved, setCopiedImproved] = useState(false);
   const [showKeyPrompt, setShowKeyPrompt] = useState(false);
@@ -819,11 +820,13 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     }
     setIsAiEvaluating(true);
     setAiError(null);
+    setAiStatus(null);
     try {
       const result = await evaluateEssayWithGemini(
         activity.title,
         submissionText,
-        activity.instructions
+        activity.instructions,
+        { onStatusChange: setAiStatus }
       );
       setAiEvaluation(result);
     } catch (err: any) {
@@ -1094,9 +1097,10 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
               {quizQuestions.length > 0 ? (
                 quizQuestions.map((q, idx) => {
                   const correctOpt = q.options.find(o => o.isCorrect);
+                  const cleanQ = q.question.replace(/^\s*\d+[\.\)]\s*/, '').trim();
                   return (
                     <div key={q.id} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs flex items-center justify-between gap-2">
-                      <span className="font-semibold text-slate-700">#{idx + 1}. {q.question}</span>
+                      <span className="font-semibold text-slate-700">#{idx + 1}. {cleanQ}</span>
                       <span className="font-bold text-emerald-800">{correctOpt?.text || ''}</span>
                     </div>
                   );
@@ -1155,6 +1159,30 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
               className="w-full text-base p-3.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3 shadow-inner"
               required
             />
+
+            {/* Live AI Model Connection & Fallback Progress */}
+            {isAiEvaluating && aiStatus && (
+              <div className="mb-3 p-3 bg-indigo-50/95 border border-indigo-200/90 rounded-xl text-xs sm:text-sm text-indigo-900 flex items-center gap-2.5 shadow-2xs transition-all">
+                <Loader2 className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
+                <div className="flex-1 min-w-0">
+                  {aiStatus.type === 'connecting' && (
+                    <span className="font-medium">
+                      {t('ai_status_connecting', { model: aiStatus.model })}
+                    </span>
+                  )}
+                  {aiStatus.type === 'fallback' && (
+                    <span className="font-semibold text-amber-800">
+                      {t('ai_status_fallback', { prevModel: aiStatus.prevModel || 'model', model: aiStatus.model })}
+                    </span>
+                  )}
+                  {aiStatus.type === 'generating' && (
+                    <span className="font-medium text-emerald-800">
+                      {t('ai_status_generating', { model: aiStatus.model })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span className="text-xs text-amber-800 font-medium">
                 {t('assign_chars_count', { count: submissionText.length })}
