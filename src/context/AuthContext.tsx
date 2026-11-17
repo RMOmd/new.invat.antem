@@ -993,7 +993,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const supabase = getSupabase();
     if (supabase) {
       try {
-        await supabase.from('submissions').insert({
+        const insertPayload: Record<string, any> = {
           id: submission.id,
           user_id: submission.userId,
           user_email: submission.userEmail,
@@ -1005,7 +1005,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           grade: submission.grade ?? null,
           teacher_feedback: submission.teacherFeedback ?? null,
           created_at: submission.createdAt
-        });
+        };
+
+        const { error } = await supabase.from('submissions').insert(insertPayload);
+        if (error) {
+          // If the postgres column type is integer (code 22P02: invalid input syntax for type integer: "7.5"),
+          // automatically retry with rounded integer so the database write succeeds seamlessly
+          if (error.code === '22P02' && typeof submission.grade === 'number') {
+            const retryRes = await supabase.from('submissions').insert({
+              ...insertPayload,
+              grade: Math.round(submission.grade)
+            });
+            if (retryRes.error) {
+              console.error('Supabase submit retry error:', retryRes.error);
+            }
+          } else {
+            console.error('Supabase submit error:', error);
+          }
+        }
       } catch (e) {
         console.error('Supabase submit error', e);
       }
@@ -1051,14 +1068,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const supabase = getSupabase();
     if (supabase) {
       try {
-        await supabase
+        const updatePayload: Record<string, any> = {
+          status: 'reviewed',
+          grade,
+          teacher_feedback: feedback
+        };
+
+        const { error } = await supabase
           .from('submissions')
-          .update({
-            status: 'reviewed',
-            grade,
-            teacher_feedback: feedback
-          })
+          .update(updatePayload)
           .eq('id', submissionId);
+
+        if (error) {
+          // If the postgres column type is integer (code 22P02: invalid input syntax for type integer: "7.5"),
+          // automatically retry with rounded integer so the database write succeeds seamlessly
+          if (error.code === '22P02' && typeof grade === 'number') {
+            const roundedGrade = Math.round(grade);
+            const retryRes = await supabase
+              .from('submissions')
+              .update({
+                ...updatePayload,
+                grade: roundedGrade
+              })
+              .eq('id', submissionId);
+
+            if (retryRes.error) {
+              console.error('Supabase review retry error:', retryRes.error);
+            }
+          } else {
+            console.error('Supabase review error:', error);
+          }
+        }
       } catch (e) {
         console.error('Supabase review error', e);
       }

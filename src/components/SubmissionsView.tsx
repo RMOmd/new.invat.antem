@@ -161,6 +161,7 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
   const [gradeInput, setGradeInput] = useState<number>(10);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isSavingReview, setIsSavingReview] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -234,23 +235,28 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
     }
   };
 
-  const handleReview = (subId: string) => {
-    const targetSub = allSubmissions.find(s => s.id === subId);
-    reviewSubmission(subId, Number(gradeInput), feedbackInput);
+  const handleReview = async (subId: string) => {
+    setIsSavingReview(true);
+    try {
+      const targetSub = allSubmissions.find(s => s.id === subId);
+      await reviewSubmission(subId, Number(gradeInput), feedbackInput);
 
-    // Notify Telegram channel / teacher bot about reviewed submission
-    if (targetSub) {
-      notifyReviewedSubmission({
-        userName: targetSub.userName,
-        userEmail: targetSub.userEmail,
-        activityTitle: targetSub.activityTitle,
-        grade: Number(gradeInput),
-        feedback: feedbackInput
-      }).catch(err => console.warn('Telegram review notification warning:', err));
+      // Notify Telegram channel / teacher bot about reviewed submission
+      if (targetSub) {
+        notifyReviewedSubmission({
+          userName: targetSub.userName,
+          userEmail: targetSub.userEmail,
+          activityTitle: targetSub.activityTitle,
+          grade: Number(gradeInput),
+          feedback: feedbackInput
+        }).catch(err => console.warn('Telegram review notification warning:', err));
+      }
+
+      setSelectedSubId(null);
+      setFeedbackInput('');
+    } finally {
+      setIsSavingReview(false);
     }
-
-    setSelectedSubId(null);
-    setFeedbackInput('');
   };
 
   const handleSaveTelegram = () => {
@@ -744,9 +750,17 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({ courseData }) 
                               <button
                                 type="button"
                                 onClick={() => handleReview(sub.id)}
-                                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                                disabled={isSavingReview}
+                                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
                               >
-                                {t('subs_btn_save_grade')}
+                                {isSavingReview ? (
+                                  <>
+                                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                    <span>Se salvează...</span>
+                                  </>
+                                ) : (
+                                  t('subs_btn_save_grade')
+                                )}
                               </button>
                               <button
                                 type="button"

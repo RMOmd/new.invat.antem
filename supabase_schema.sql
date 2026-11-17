@@ -33,10 +33,13 @@ CREATE TABLE IF NOT EXISTS public.submissions (
   activity_title TEXT NOT NULL,
   submission_text TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'reviewed'
-  grade INTEGER,
+  grade NUMERIC(4, 1), -- supports decimal grades like 7.5, 8.5, 10
   teacher_feedback TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration for existing installations (run this in Supabase SQL editor):
+-- ALTER TABLE public.submissions ALTER COLUMN grade TYPE NUMERIC(4, 1);
 
 -- 4. Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
