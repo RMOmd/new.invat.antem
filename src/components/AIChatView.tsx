@@ -22,7 +22,12 @@ import {
   Key,
   Bot,
   User,
-  ArrowRight
+  ArrowRight,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Radio
 } from 'lucide-react';
 
 interface ModelOption {
@@ -51,8 +56,8 @@ const DEFAULT_PRESET_MODELS: ModelOption[] = [
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', group: 'pro', description: 'Предыдущее поколение Pro' },
 
   // Experimental / Audio / Speech / Transcribe
-  { id: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash Native Audio / TTS', group: 'experimental', description: 'Синтез и аудио-диалог' },
-  { id: 'gemini-3.5-transcribe', label: 'Gemini 3.5 Transcribe Live', group: 'experimental', description: 'Транскрибация и распознавание' },
+  { id: 'gemini-3.5-transcribe', label: 'Gemini 3.5 Transcribe Live (ASR)', group: 'experimental', description: 'Распознавание речи в текст' },
+  { id: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash Native Audio / TTS', group: 'experimental', description: 'Синтез речи' },
   { id: 'gemini-3.8-flash-tts', label: 'Gemini 3.8 Flash TTS', group: 'experimental', description: 'Новое поколение TTS' },
   { id: 'gemini-omni-1.2-flash', label: 'Gemini Omni 1.2 Flash', group: 'experimental', description: 'Мультимодальная Omni модель' }
 ];
@@ -62,7 +67,7 @@ const SYSTEM_PROMPTS = [
     id: 'tutor_antem',
     title: '🎓 Преподаватель ANTEM (A1-A2)',
     text: `Ești un profesor universitar și evaluator expert de limba română (metodologia ANTEM, nivel A1-A2).
-Răspunde clar, prietenos și încurajator. Folosește limba română curată (cu diacritice: ă, â, î, ș, ț). Dacă utilizatorul întreabă în rusă sau are neclarități, explică regula gramaticală pe scurt în limba rusă și oferă exemple practice în română.`
+Răspunde concis (2-4 fraze), prietenos și încurajator, potrivit pentru dialog oral. Folosește limba română curată (cu diacritice: ă, â, î, ș, ț). Dacă utilizatorul întreabă în rusă, explică regula scurt și oferă exemplul în română.`
   },
   {
     id: 'editor_proofreader',
@@ -70,14 +75,13 @@ Răspunde clar, prietenos și încurajator. Folosește limba română curată (c
     text: `Ești un lingvist și redactor riguros de limba română.
 Analizează fiecare frază a utilizatorului:
 1. Identifică greșelile de acord, conjugare, pronume clitice sau diacritice.
-2. Oferă varianta corectată cu explicație scurtă a regulii.
-3. Dacă textul este corect, confirmă și propune o variantă stilistic mai bogată.`
+2. Oferă varianta corectată cu explicație scurtă a regulii.`
   },
   {
     id: 'free_conversation',
     title: '💬 Собеседник из Кишинёва',
     text: `Ești un prieten vorbitor nativ de limba română din Chișinău.
-Porți un dialog cald, prietenos și natural în limba română de zi cu zi. Pune întrebări deschise, menține conversația vie și corectează subtil eventualele greșeli ale partenerului de dialog.`
+Porți un dialog vocal cald, prietenos și natural în limba română de zi cu zi. Răspunde cu replici scurte de conversație vie (1-3 fraze) și pune o întrebare de continuare.`
   },
   {
     id: 'quiz_generator',
@@ -88,10 +92,10 @@ Creează exerciții concise: completare de spații (gaps), întrebări Adevărat
 ];
 
 const QUICK_PROMPTS = [
-  'Verifică gramatica: „Eu merge la magazin ieri și cumpără pâine.”',
+  'Bună ziua! Cum mă pot prezenta la un interviu în limba română?',
   'Explică pe scurt regula: când folosim prepoziția „la” și când „în”?',
-  'Compune un dialog de 6 replici la cafenea (nivel A1)',
-  'Care este diferența dintre verbele „a ști”, „a cunoaște” și „a afla”?'
+  'Hai să exersăm un dialog scurt la restaurant în Chișinău.',
+  'Corectează fraza mea: „Eu ieri fost la piață și cumpărat mere.”'
 ];
 
 export const AIChatView: React.FC = () => {
@@ -121,6 +125,13 @@ export const AIChatView: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // VOICE IN & VOICE OUT (Full-Duplex Audio Dialogue)
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [recognitionLang, setRecognitionLang] = useState<'ro-RO' | 'ru-RU'>('ro-RO');
+  const [autoSpeak, setAutoSpeak] = useState<boolean>(true);
+  const [currentlySpeakingId, setCurrentlySpeakingId] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
   const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
   const [keySavedNotice, setKeySavedNotice] = useState<boolean>(false);
@@ -139,7 +150,122 @@ export const AIChatView: React.FC = () => {
     } catch (e) {}
   }, [messages]);
 
+  // Cleanup speech synthesis on unmount
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+    };
+  }, []);
+
   const activeModel = isCustomModel ? (customModelInput.trim() || 'gemini-flash-lite-latest') : selectedModel;
+
+  // Speak text using Web Speech API with clean Romanian/Russian pronunciation
+  const speakText = (text: string, msgId?: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    window.speechSynthesis.cancel();
+    if (currentlySpeakingId === msgId) {
+      setCurrentlySpeakingId(null);
+      return;
+    }
+
+    // Strip markdown characters and quotes for smooth acoustic synthesis
+    const clean = text
+      .replace(/[*#_`>~]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim();
+
+    if (!clean) return;
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = recognitionLang === 'ru-RU' ? 'ru-RU' : 'ro-RO';
+    utterance.rate = 0.95; // slightly deliberate pacing for language training
+
+    // Pick appropriate system voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const roVoice = voices.find(v => v.lang.startsWith('ro') || v.lang.includes('RON') || v.name.toLowerCase().includes('romanian'));
+    const ruVoice = voices.find(v => v.lang.startsWith('ru') || v.name.toLowerCase().includes('russian'));
+
+    if (recognitionLang === 'ro-RO' && roVoice) {
+      utterance.voice = roVoice;
+    } else if (recognitionLang === 'ru-RU' && ruVoice) {
+      utterance.voice = ruVoice;
+    }
+
+    if (msgId) setCurrentlySpeakingId(msgId);
+
+    utterance.onend = () => setCurrentlySpeakingId(null);
+    utterance.onerror = () => setCurrentlySpeakingId(null);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setCurrentlySpeakingId(null);
+  };
+
+  // Toggle Voice Recording with SpeechRecognition
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Recunoașterea vocală nu este suportată în acest browser. Vă rugăm să folosiți Google Chrome sau Microsoft Edge.');
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      setIsListening(false);
+      return;
+    }
+
+    // Stop speaking if AI is talking
+    stopSpeaking();
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = recognitionLang;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((res: any) => res[0]?.transcript || '')
+          .join('');
+        setInputText(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech recognition notice:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: any) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
+  };
 
   const handleFetchAllModels = async () => {
     setIsFetchingModels(true);
@@ -163,6 +289,14 @@ export const AIChatView: React.FC = () => {
       return;
     }
 
+    // If user was speaking, stop recognition
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      setIsListening(false);
+    }
+
     const userMsg: ChatMessageItem = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       role: 'user',
@@ -183,8 +317,9 @@ export const AIChatView: React.FC = () => {
         temperature
       );
 
+      const botMsgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const botMsg: ChatMessageItem = {
-        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        id: botMsgId,
         role: 'model',
         text: res.text,
         timestamp: Date.now(),
@@ -193,6 +328,11 @@ export const AIChatView: React.FC = () => {
       };
 
       setMessages(prev => [...prev, botMsg]);
+
+      // If autoSpeak is enabled, talk back immediately
+      if (autoSpeak) {
+        speakText(res.text, botMsgId);
+      }
     } catch (err: any) {
       const errorMsg: ChatMessageItem = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -211,6 +351,7 @@ export const AIChatView: React.FC = () => {
   const handleClearChat = () => {
     if (messages.length === 0) return;
     if (window.confirm('Sigur doriți să ștergeți întregul istoric al conversației?')) {
+      stopSpeaking();
       setMessages([]);
       localStorage.removeItem('romanian_ai_lab_chat');
     }
@@ -259,20 +400,50 @@ export const AIChatView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
-                  AI Lab • Диалоговая лаборатория
+                  AI Lab • Голосовой диалог с Gemini
                 </h1>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                  Тест
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Radio className="w-2.5 h-2.5 text-purple-600 animate-pulse" />
+                  Голос / Live
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Прямое тестирование моделей Google Gemini для методики ANTEM
+                Двусторонний голосовой диалог (микрофон 🎙️ $\leftrightarrow$ ответ голосом 🔊)
               </p>
             </div>
           </div>
 
-          {/* Model selector & Settings Controls */}
+          {/* Model selector, Voice Toggle & Settings */}
           <div className="flex items-center flex-wrap gap-2">
+            {/* Auto-speech toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !autoSpeak;
+                setAutoSpeak(next);
+                if (!next) stopSpeaking();
+              }}
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                autoSpeak
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-800'
+              }`}
+              title="Автоматически озвучивать ответы модели голосом"
+            >
+              {autoSpeak ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                  <span className="hidden sm:inline">Голос вкл</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Голос выкл</span>
+                </>
+              )}
+            </button>
+
+            {/* Model selector dropdown */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs">
               <span className="text-[11px] font-bold text-slate-500 pl-1.5 hidden sm:inline">Модель:</span>
               <select
@@ -336,7 +507,7 @@ export const AIChatView: React.FC = () => {
                   ? 'bg-purple-50 border-purple-200 text-purple-700'
                   : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
               }`}
-              title="Настройки системного промпта и температуры"
+              title="Настройки системного промпта и параметров"
             >
               <Sliders className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Промпт</span>
@@ -422,7 +593,7 @@ export const AIChatView: React.FC = () => {
                 onChange={e => setTemperature(parseFloat(e.target.value))}
                 className="w-32 accent-purple-600 cursor-pointer"
               />
-              <span className="text-[10px] text-slate-400">(0.0 = строгие факты, 1.0 = креативность)</span>
+              <span className="text-[10px] text-slate-400">(0.0 = строго, 1.0 = креативность)</span>
             </div>
           </div>
         )}
@@ -436,15 +607,15 @@ export const AIChatView: React.FC = () => {
               <Bot className="w-7 h-7" />
             </div>
             <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1">
-              Лаборатория диалога с моделями Gemini
+              Голосовой собеседник по румынскому языку
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mb-5">
-              Задайте вопрос на румынском или русском, попросите составить упражнение или протестируйте поведение выбранной модели.
+              Нажмите на 🎙️ микрофон снизу, чтобы сказать фразу голосом. ИИ распознает вашу речь и ответит голосом в реальном времени!
             </p>
 
             <div className="w-full max-w-lg space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Быстрые примеры запросов:
+                Или нажмите на готовый вопрос:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
                 {QUICK_PROMPTS.map((qp, idx) => (
@@ -465,6 +636,7 @@ export const AIChatView: React.FC = () => {
           messages.map(msg => {
             const isUser = msg.role === 'user';
             const isErr = !!msg.error;
+            const isSpeakingThis = currentlySpeakingId === msg.id;
 
             return (
               <div
@@ -496,24 +668,50 @@ export const AIChatView: React.FC = () => {
                           <span className="text-slate-400">⏱️ {msg.latencyMs} ms</span>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyMessage(msg.text, msg.id)}
-                        className="p-1 hover:text-slate-700 transition-colors cursor-pointer flex items-center gap-0.5"
-                        title="Скопировать ответ"
-                      >
-                        {copiedId === msg.id ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-600" />
-                            <span className="text-emerald-600 font-bold">Скопировано</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Копировать</span>
-                          </>
+                      <div className="flex items-center gap-2">
+                        {/* Voice read-aloud button */}
+                        {!isErr && (
+                          <button
+                            type="button"
+                            onClick={() => speakText(msg.text, msg.id)}
+                            className={`p-1 transition-colors cursor-pointer flex items-center gap-1 font-bold ${
+                              isSpeakingThis ? 'text-purple-600 animate-pulse' : 'text-slate-500 hover:text-purple-600'
+                            }`}
+                            title={isSpeakingThis ? 'Остановить воспроизведение' : 'Прослушать ответ голосом'}
+                          >
+                            {isSpeakingThis ? (
+                              <>
+                                <VolumeX className="w-3.5 h-3.5 text-purple-600" />
+                                <span className="text-purple-600">Стоп</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3.5 h-3.5" />
+                                <span>Слушать</span>
+                              </>
+                            )}
+                          </button>
                         )}
-                      </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(msg.text, msg.id)}
+                          className="p-1 hover:text-slate-700 transition-colors cursor-pointer flex items-center gap-0.5"
+                          title="Скопировать ответ"
+                        >
+                          {copiedId === msg.id ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span className="text-emerald-600 font-bold">Скопировано</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Копировать</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -556,13 +754,30 @@ export const AIChatView: React.FC = () => {
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-xs px-4 py-3 shadow-2xs flex items-center gap-2 text-xs text-purple-700 font-semibold">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" />
-              <span>Модель {activeModel} формирует ответ...</span>
+              <span>Модель {activeModel} слушает и формулирует ответ...</span>
             </div>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Voice active indicator banner */}
+      {isListening && (
+        <div className="mb-2 p-2.5 bg-rose-50 border-2 border-rose-300 rounded-xl flex items-center justify-between text-xs text-rose-900 animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />
+            <span className="font-bold">Идёт запись с микрофона... Говорите в микрофон!</span>
+          </div>
+          <button
+            type="button"
+            onClick={toggleListening}
+            className="px-2.5 py-1 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 transition-colors cursor-pointer"
+          >
+            Готово (Отправить)
+          </button>
+        </div>
+      )}
 
       {/* Input area */}
       <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm shrink-0">
@@ -573,6 +788,30 @@ export const AIChatView: React.FC = () => {
           }}
           className="flex items-end gap-2"
         >
+          {/* Microphone button for Voice In */}
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={toggleListening}
+              className={`p-3 rounded-xl font-bold shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center ${
+                isListening
+                  ? 'bg-rose-600 text-white ring-4 ring-rose-200 animate-pulse'
+                  : 'bg-purple-100 hover:bg-purple-200 text-purple-800'
+              }`}
+              title={isListening ? 'Остановить запись' : 'Говорить голосом в микрофон'}
+            >
+              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecognitionLang(recognitionLang === 'ro-RO' ? 'ru-RU' : 'ro-RO')}
+              className="text-[10px] font-bold text-slate-500 hover:text-purple-700 uppercase"
+              title="Переключить язык распознавания речи"
+            >
+              {recognitionLang === 'ro-RO' ? '🇷🇴 RO' : '🇷🇺 RU'}
+            </button>
+          </div>
+
           <textarea
             rows={2}
             value={inputText}
@@ -583,8 +822,16 @@ export const AIChatView: React.FC = () => {
                 handleSendMessage();
               }
             }}
-            placeholder="Напишите сообщение или вопрос по румынскому языку (Enter — отправить, Shift+Enter — перенос)..."
-            className="flex-1 text-xs sm:text-sm p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white resize-none"
+            placeholder={
+              isListening
+                ? 'Слушаю вас... Говорите в микрофон...'
+                : 'Напишите или надиктуйте голосом вопрос (Enter — отправить)...'
+            }
+            className={`flex-1 text-xs sm:text-sm p-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none transition-all ${
+              isListening
+                ? 'bg-rose-50/40 border-rose-300 text-rose-950 font-medium'
+                : 'bg-slate-50 border-slate-200 text-slate-800 focus:bg-white'
+            }`}
             disabled={isLoading}
           />
 
@@ -681,4 +928,3 @@ export const AIChatView: React.FC = () => {
     </div>
   );
 };
-
