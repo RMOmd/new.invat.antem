@@ -164,6 +164,13 @@ export const AIChatView: React.FC = () => {
   const [isCallMuted, setIsCallMuted] = useState<boolean>(false);
   const [callDurationSeconds, setCallDurationSeconds] = useState<number>(0);
 
+  // Pause duration before assistant considers phrase complete (default 2200ms for natural learning pace)
+  const [silenceDelayMs, setSilenceDelayMs] = useState<number>(2200);
+  const silenceDelayRef = useRef<number>(2200);
+  const callStatusRef = useRef<'connecting' | 'listening' | 'thinking' | 'speaking'>('connecting');
+  const accumulatedTranscriptRef = useRef<string>('');
+  const currentUtteranceRef = useRef<any>(null);
+
   const callRecognitionRef = useRef<any>(null);
   const callSilenceTimerRef = useRef<any>(null);
   const isCallActiveRef = useRef<boolean>(false);
@@ -189,6 +196,31 @@ export const AIChatView: React.FC = () => {
   useEffect(() => {
     isCallMutedRef.current = isCallMuted;
   }, [isCallMuted]);
+
+  useEffect(() => {
+    silenceDelayRef.current = silenceDelayMs;
+  }, [silenceDelayMs]);
+
+  // Keyboard shortcut in Live Call: Spacebar to interrupt AI or send speech immediately
+  useEffect(() => {
+    if (!isLiveCall) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (callStatusRef.current === 'speaking') {
+          interruptAiAndListen();
+        } else if (callStatusRef.current === 'listening' && accumulatedTranscriptRef.current.trim().length > 0) {
+          commitUserSpeech(accumulatedTranscriptRef.current.trim());
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLiveCall]);
 
   // Call duration counter
   useEffect(() => {
@@ -265,6 +297,7 @@ export const AIChatView: React.FC = () => {
     }
 
     const utterance = new SpeechSynthesisUtterance(clean);
+    currentUtteranceRef.current = utterance;
     utterance.lang = recognitionLang === 'ru-RU' ? 'ru-RU' : 'ro-RO';
     utterance.rate = 1.0;
 
@@ -281,11 +314,13 @@ export const AIChatView: React.FC = () => {
     if (msgId) setCurrentlySpeakingId(msgId);
 
     utterance.onend = () => {
+      currentUtteranceRef.current = null;
       setCurrentlySpeakingId(null);
       if (onEndCallback) onEndCallback();
     };
 
     utterance.onerror = () => {
+      currentUtteranceRef.current = null;
       setCurrentlySpeakingId(null);
       if (onEndCallback) onEndCallback();
     };
@@ -423,11 +458,49 @@ export const AIChatView: React.FC = () => {
   // -------------------------------------------------------------
   // CONTINUOUS HANDS-FREE LIVE CALL IMPLEMENTATION
   // -------------------------------------------------------------
+  const commitUserSpeech = (phrase: string) => {
+    if (callSilenceTimerRef.current) {
+      clearTimeout(callSilenceTimerRef.current);
+    }
+    if (!isCallActiveRef.current || callStatusRef.current !== 'listening') return;
+
+    const clean = phrase.trim();
+    if (!clean) return;
+
+    callStatusRef.current = 'thinking';
+    setCallStatus('thinking');
+
+    if (callRecognitionRef.current) {
+      try {
+        callRecognitionRef.current.abort();
+      } catch (e) {}
+    }
+
+    processLiveCallTurn(clean);
+  };
+
+  const interruptAiAndListen = () => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    if (callSilenceTimerRef.current) {
+      clearTimeout(callSilenceTimerRef.current);
+    }
+    if (isCallActiveRef.current) {
+      callStatusRef.current = 'listening';
+      setCallStatus('listening');
+      setCallTranscriptUser('');
+      accumulatedTranscriptRef.current = '';
+      restartLiveRecognition();
+    }
+  };
+
   const processLiveCallTurn = async (userSpokenText: string) => {
     if (!isCallActiveRef.current) return;
     const clean = userSpokenText.trim();
     if (!clean) return;
 
+    callStatusRef.current = 'thinking';
     setCallStatus('thinking');
 
     const userMsg: ChatMessageItem = {
@@ -468,10 +541,15 @@ export const AIChatView: React.FC = () => {
       setCallTranscriptAi(res.text);
 
       // Now speak the answer out loud
+      callStatusRef.current = 'speaking';
       setCallStatus('speaking');
       speakText(res.text, botMsgId, () => {
         // When AI finishes speaking, immediately start listening to user again
         if (isCallActiveRef.current) {
+          callStatusRef.current = 'listening';
+          setCallStatus('listening');
+          setCallTranscriptUser('');
+          accumulatedTranscriptRef.current = '';
           restartLiveRecognition();
         }
       });
@@ -479,9 +557,16 @@ export const AIChatView: React.FC = () => {
       if (!isCallActiveRef.current) return;
       const errorText = `Nu am putut procesa răspunsul: ${err.message}`;
       setCallTranscriptAi(errorText);
+      callStatusRef.current = 'speaking';
       setCallStatus('speaking');
       speakText('Scuze, a apărut o mică eroare de conexiune.', undefined, () => {
-        if (isCallActiveRef.current) restartLiveRecognition();
+        if (isCallActiveRef.current) {
+          callStatusRef.current = 'listening';
+          setCallStatus('listening');
+          setCallTranscriptUser('');
+          accumulatedTranscriptRef.current = '';
+          restartLiveRecognition();
+        }
       });
     }
   };
@@ -494,56 +579,57 @@ export const AIChatView: React.FC = () => {
 
     if (callRecognitionRef.current) {
       try {
-        callRecognitionRef.current.stop();
+        callRecognitionRef.current.abort();
       } catch (e) {}
     }
 
     try {
       const recognition = new SpeechRecognition();
       recognition.lang = recognitionLang;
-      recognition.continuous = false;
+      // CONTINUOUS is true so browser does NOT cut off speech on slight pauses!
+      recognition.continuous = true;
       recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
 
+      callStatusRef.current = 'listening';
       setCallStatus('listening');
 
       recognition.onstart = () => {
+        callStatusRef.current = 'listening';
         setCallStatus('listening');
       };
 
       recognition.onresult = (event: any) => {
-        if (!isCallActiveRef.current) return;
+        if (!isCallActiveRef.current || callStatusRef.current !== 'listening') return;
 
-        // BARGE-IN: If AI was speaking and user speaks, stop AI immediately!
-        if (window.speechSynthesis && window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-          setCallStatus('listening');
+        let fullTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          fullTranscript += event.results[i][0].transcript;
         }
+        fullTranscript = fullTranscript.trim();
 
-        const transcript = Array.from(event.results)
-          .map((res: any) => res[0]?.transcript || '')
-          .join('');
+        if (!fullTranscript) return;
 
-        setCallTranscriptUser(transcript);
+        accumulatedTranscriptRef.current = fullTranscript;
+        setCallTranscriptUser(fullTranscript);
 
+        // Reset silence timer on every spoken syllable/word
         if (callSilenceTimerRef.current) {
           clearTimeout(callSilenceTimerRef.current);
         }
 
-        // When user pauses for 800ms, trigger thinking and response
+        // Only after user pauses for silenceDelay (default 2.2s), commit speech to Gemini
         callSilenceTimerRef.current = setTimeout(() => {
-          if (transcript.trim().length > 0 && isCallActiveRef.current) {
-            try {
-              recognition.stop();
-            } catch (e) {}
-            processLiveCallTurn(transcript);
+          if (callStatusRef.current === 'listening' && accumulatedTranscriptRef.current.trim().length > 0) {
+            commitUserSpeech(accumulatedTranscriptRef.current.trim());
           }
-        }, 800);
+        }, silenceDelayRef.current);
       };
 
       recognition.onerror = (e: any) => {
         if (isCallActiveRef.current && e.error !== 'aborted') {
           setTimeout(() => {
-            if (isCallActiveRef.current && callStatus !== 'speaking' && callStatus !== 'thinking') {
+            if (isCallActiveRef.current && callStatusRef.current === 'listening') {
               restartLiveRecognition();
             }
           }, 300);
@@ -551,13 +637,13 @@ export const AIChatView: React.FC = () => {
       };
 
       recognition.onend = () => {
-        // If recognition closed but user didn't speak and call is still active, loop listening
-        if (isCallActiveRef.current && callStatus === 'listening') {
+        // If recognition closed automatically by Chrome but call is active and listening, loop smoothly
+        if (isCallActiveRef.current && callStatusRef.current === 'listening' && !isCallMutedRef.current) {
           setTimeout(() => {
-            if (isCallActiveRef.current && callStatus === 'listening') {
+            if (isCallActiveRef.current && callStatusRef.current === 'listening') {
               restartLiveRecognition();
             }
-          }, 200);
+          }, 150);
         }
       };
 
@@ -582,17 +668,24 @@ export const AIChatView: React.FC = () => {
 
     setIsLiveCall(true);
     isCallActiveRef.current = true;
+    callStatusRef.current = 'connecting';
     setCallStatus('connecting');
     setCallTranscriptUser('');
+    accumulatedTranscriptRef.current = '';
 
     const greeting = 'Bună ziua! Sunt profesorul tău de limba română. Te ascult cu drag — despre ce vrei să discutăm astăzi?';
     setCallTranscriptAi(greeting);
 
     // Speak welcome greeting
+    callStatusRef.current = 'speaking';
     setCallStatus('speaking');
     setTimeout(() => {
       speakText(greeting, undefined, () => {
         if (isCallActiveRef.current) {
+          callStatusRef.current = 'listening';
+          setCallStatus('listening');
+          setCallTranscriptUser('');
+          accumulatedTranscriptRef.current = '';
           restartLiveRecognition();
         }
       });
@@ -602,12 +695,13 @@ export const AIChatView: React.FC = () => {
   const endLiveCall = () => {
     setIsLiveCall(false);
     isCallActiveRef.current = false;
+    callStatusRef.current = 'connecting';
     setCallStatus('connecting');
     stopSpeaking();
 
     if (callRecognitionRef.current) {
       try {
-        callRecognitionRef.current.stop();
+        callRecognitionRef.current.abort();
       } catch (e) {}
     }
     if (callSilenceTimerRef.current) {
@@ -686,7 +780,7 @@ export const AIChatView: React.FC = () => {
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
 
         {/* Top Header in Call */}
-        <div className="w-full flex items-center justify-between z-10 pt-2">
+        <div className="w-full flex items-center justify-between z-10 pt-2 flex-wrap gap-2">
           <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
             <span className="text-xs font-bold tracking-wider font-mono">
@@ -694,14 +788,51 @@ export const AIChatView: React.FC = () => {
             </span>
           </div>
 
-          <div className="text-center">
-            <span className="text-xs font-bold text-indigo-200 bg-indigo-950/80 border border-indigo-700/50 px-3 py-1 rounded-full uppercase tracking-wider block">
-              {currentModelConfig.name}
-            </span>
+          {/* Silence pause duration selector */}
+          <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md p-1 rounded-full border border-white/10 text-[11px] font-bold">
+            <span className="text-slate-300 pl-2 pr-1 text-[10px] uppercase tracking-wider hidden sm:inline">Пауза:</span>
+            <button
+              type="button"
+              onClick={() => setSilenceDelayMs(1400)}
+              className={`px-2 py-0.5 rounded-full transition-all cursor-pointer ${
+                silenceDelayMs === 1400 ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              }`}
+              title="Быстрый темп (1.4с тишины)"
+            >
+              1.4с
+            </button>
+            <button
+              type="button"
+              onClick={() => setSilenceDelayMs(2200)}
+              className={`px-2 py-0.5 rounded-full transition-all cursor-pointer ${
+                silenceDelayMs === 2200 ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              }`}
+              title="Стандартный комфортный темп (2.2с тишины)"
+            >
+              2.2с
+            </button>
+            <button
+              type="button"
+              onClick={() => setSilenceDelayMs(3500)}
+              className={`px-2 py-0.5 rounded-full transition-all cursor-pointer ${
+                silenceDelayMs === 3500 ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              }`}
+              title="Спокойный темп для новичков (3.5с тишины)"
+            >
+              3.5с
+            </button>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 text-xs font-bold">
-            <span>{recognitionLang === 'ro-RO' ? '🇷🇴 RO' : '🇷🇺 RU'}</span>
+          <div className="flex items-center gap-2">
+            <div className="text-center hidden sm:block">
+              <span className="text-[11px] font-bold text-indigo-200 bg-indigo-950/80 border border-indigo-700/50 px-2.5 py-1 rounded-full uppercase tracking-wider block">
+                {currentModelConfig.name}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 text-xs font-bold">
+              <span>{recognitionLang === 'ro-RO' ? '🇷🇴 RO' : '🇷🇺 RU'}</span>
+            </div>
           </div>
         </div>
 
@@ -781,10 +912,42 @@ export const AIChatView: React.FC = () => {
               </p>
             ) : (
               <p className="text-xs text-slate-400 italic">
-                Начните говорить на румынском, репетитор сразу подхватит диалог...
+                Начните говорить на румынском, репетитор внимательно выслушает и ответит...
               </p>
             )}
           </div>
+
+          {/* Action triggers: Send now without waiting for pause OR Interrupt AI */}
+          {callStatus === 'listening' && callTranscriptUser.trim().length > 0 && (
+            <div className="flex flex-col items-center gap-1.5 mt-3">
+              <button
+                type="button"
+                onClick={() => commitUserSpeech(callTranscriptUser)}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer animate-pulse"
+                title="Отправить распознанную фразу не дожидаясь паузы (или нажмите Пробел)"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Ответить сейчас (Пробел)</span>
+              </button>
+              <span className="text-[11px] text-emerald-300/80 font-medium">
+                ⏳ Жду тишину {(silenceDelayMs / 1000).toFixed(1)}с перед отправкой... Говорите дальше!
+              </span>
+            </div>
+          )}
+
+          {callStatus === 'speaking' && (
+            <div className="flex flex-col items-center gap-1 mt-3">
+              <button
+                type="button"
+                onClick={interruptAiAndListen}
+                className="px-4 py-2 bg-purple-600/90 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer border border-purple-400/40"
+                title="Остановить голос репетитора и начать говорить (или нажмите Пробел)"
+              >
+                <Mic className="w-3.5 h-3.5" />
+                <span>✋ Прервать ответ и говорить (Пробел)</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Bottom Call Controls */}
