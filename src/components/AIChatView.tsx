@@ -5,7 +5,6 @@ import {
   getGeminiApiKey,
   saveGeminiApiKey,
   isGeminiConfigured,
-  fetchAvailableGeminiModels,
   sendChatMessage,
   ChatMessageItem
 } from '../lib/gemini';
@@ -18,7 +17,6 @@ import {
   RefreshCw,
   Sliders,
   AlertCircle,
-  HelpCircle,
   Key,
   Bot,
   User,
@@ -27,39 +25,69 @@ import {
   MicOff,
   Volume2,
   VolumeX,
-  Radio
+  Radio,
+  Zap
 } from 'lucide-react';
 
-interface ModelOption {
-  id: string;
-  label: string;
-  group: 'lite' | 'flash' | 'pro' | 'experimental' | 'custom';
-  description?: string;
+export interface UnlimitedModel {
+  key: string;
+  name: string;
+  apiModel: string;
+  candidateModels: string[];
+  badge: string;
+  description: string;
 }
 
-const DEFAULT_PRESET_MODELS: ModelOption[] = [
-  // Fast Lite
-  { id: 'gemini-flash-lite-latest', label: 'Gemini Flash Lite (Latest)', group: 'lite', description: 'Макс. скорость, стабильные квоты, без 503' },
-  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite', group: 'lite', description: 'Оптимальный баланс качества и скорости' },
-  { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite', group: 'lite', description: 'Легковесная быстрая модель' },
-
-  // Flash
-  { id: 'gemini-flash-latest', label: 'Gemini Flash (Latest)', group: 'flash', description: 'Стандартная универсальная модель' },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (Live Translate)', group: 'flash', description: 'Продвинутый перевод и генерация' },
-  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Live)', group: 'flash', description: 'Новейшая быстрая модель' },
-  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview', group: 'flash', description: 'Предварительная версия' },
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', group: 'flash', description: 'Предыдущее поколение Flash' },
-
-  // Pro & Extended Thinking
-  { id: 'gemini-pro-latest', label: 'Gemini Pro (Latest)', group: 'pro', description: 'Глубокий анализ и рассуждения' },
-  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview', group: 'pro', description: 'Флагманская модель рассуждений' },
-  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', group: 'pro', description: 'Предыдущее поколение Pro' },
-
-  // Experimental / Audio / Speech / Transcribe
-  { id: 'gemini-3.5-transcribe', label: 'Gemini 3.5 Transcribe Live (ASR)', group: 'experimental', description: 'Распознавание речи в текст' },
-  { id: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash Native Audio / TTS', group: 'experimental', description: 'Синтез речи' },
-  { id: 'gemini-3.8-flash-tts', label: 'Gemini 3.8 Flash TTS', group: 'experimental', description: 'Новое поколение TTS' },
-  { id: 'gemini-omni-1.2-flash', label: 'Gemini Omni 1.2 Flash', group: 'experimental', description: 'Мультимодальная Omni модель' }
+// STRICTLY the 6 unlimited models requested by the user
+export const UNLIMITED_MODELS: UnlimitedModel[] = [
+  {
+    key: 'gemini-3-flash-live',
+    name: 'Gemini 3 Flash Live',
+    apiModel: 'gemini-3-flash-preview',
+    candidateModels: ['gemini-3-flash-preview', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'],
+    badge: 'Live',
+    description: 'Высокоскоростной живой диалог без лимитов'
+  },
+  {
+    key: 'gemini-3.5-transcribe-live',
+    name: 'Gemini 3.5 Transcribe Live',
+    apiModel: 'gemini-3.5-transcribe',
+    candidateModels: ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'],
+    badge: 'Transcribe Live',
+    description: 'Голосовой ввод и распознавание речи в реальном времени'
+  },
+  {
+    key: 'gemini-3.5-live-translate',
+    name: 'Gemini 3.5 Live Translate',
+    apiModel: 'gemini-3.5-flash',
+    candidateModels: ['gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'],
+    badge: 'Live Translate',
+    description: 'Синхронный перевод и объяснение грамматических правил'
+  },
+  {
+    key: 'gemini-3.8-live',
+    name: 'Gemini 3.8 Live',
+    apiModel: 'gemini-3.8-flash',
+    candidateModels: ['gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'],
+    badge: 'Live 3.8',
+    description: 'Флагманский речевой интеллект нового поколения'
+  },
+  {
+    key: 'gemini-2.5-flash-native-audio',
+    name: 'Gemini 2.5 Flash Native Audio Dialog',
+    apiModel: 'gemini-2.5-flash-preview-tts',
+    candidateModels: ['gemini-2.5-flash-preview-tts', 'gemini-2.5-flash', 'gemini-flash-lite-latest'],
+    badge: 'Native Audio',
+    description: 'Нативный двусторонний аудио-диалог'
+  },
+  {
+    key: 'gemini-3.8-live-extended-thinking',
+    name: 'Gemini 3.8 Live Extended Thinking',
+    apiModel: 'gemini-3.8-flash',
+    candidateModels: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-pro-latest'],
+    badge: 'Extended Thinking',
+    description: 'Глубокий анализ, рассуждения и методика преподавания'
+  }
 ];
 
 const SYSTEM_PROMPTS = [
@@ -70,18 +98,18 @@ const SYSTEM_PROMPTS = [
 Răspunde concis (2-4 fraze), prietenos și încurajator, potrivit pentru dialog oral. Folosește limba română curată (cu diacritice: ă, â, î, ș, ț). Dacă utilizatorul întreabă în rusă, explică regula scurt și oferă exemplul în română.`
   },
   {
+    id: 'free_conversation',
+    title: '💬 Собеседник из Кишинёва',
+    text: `Ești un prieten vorbitor nativ de limba română din Chișinău.
+Porți un dialog vocal cald, prietenos și natural în limba română de zi cu zi. Răspunde cu replici scurte de conversație vie (1-3 fraze) și pune o întrebare de continuare.`
+  },
+  {
     id: 'editor_proofreader',
     title: '✍️ Редактор и грамматический разбор',
     text: `Ești un lingvist și redactor riguros de limba română.
 Analizează fiecare frază a utilizatorului:
 1. Identifică greșelile de acord, conjugare, pronume clitice sau diacritice.
 2. Oferă varianta corectată cu explicație scurtă a regulii.`
-  },
-  {
-    id: 'free_conversation',
-    title: '💬 Собеседник из Кишинёва',
-    text: `Ești un prieten vorbitor nativ de limba română din Chișinău.
-Porți un dialog vocal cald, prietenos și natural în limba română de zi cu zi. Răspunde cu replici scurte de conversație vie (1-3 fraze) și pune o întrebare de continuare.`
   },
   {
     id: 'quiz_generator',
@@ -100,14 +128,10 @@ const QUICK_PROMPTS = [
 
 export const AIChatView: React.FC = () => {
   const { currentUser } = useAuth();
-  const { t } = useLanguage();
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'teacher';
 
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-flash-lite-latest');
-  const [customModelInput, setCustomModelInput] = useState<string>('');
-  const [isCustomModel, setIsCustomModel] = useState<boolean>(false);
-  const [availableApiModels, setAvailableApiModels] = useState<string[]>([]);
-  const [isFetchingModels, setIsFetchingModels] = useState<boolean>(false);
+  // Default to Gemini 3 Flash Live (verified 200 OK responsive)
+  const [selectedModelKey, setSelectedModelKey] = useState<string>('gemini-3-flash-live');
 
   const [selectedPromptId, setSelectedPromptId] = useState<string>('tutor_antem');
   const [systemPrompt, setSystemPrompt] = useState<string>(SYSTEM_PROMPTS[0].text);
@@ -138,6 +162,8 @@ export const AIChatView: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const currentModelConfig = UNLIMITED_MODELS.find(m => m.key === selectedModelKey) || UNLIMITED_MODELS[0];
+
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -164,9 +190,7 @@ export const AIChatView: React.FC = () => {
     };
   }, []);
 
-  const activeModel = isCustomModel ? (customModelInput.trim() || 'gemini-flash-lite-latest') : selectedModel;
-
-  // Speak text using Web Speech API with clean Romanian/Russian pronunciation
+  // Speak text using Web Speech API with clean Romanian pronunciation
   const speakText = (text: string, msgId?: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
@@ -176,7 +200,6 @@ export const AIChatView: React.FC = () => {
       return;
     }
 
-    // Strip markdown characters and quotes for smooth acoustic synthesis
     const clean = text
       .replace(/[*#_`>~]/g, '')
       .replace(/https?:\/\/\S+/g, '')
@@ -186,9 +209,8 @@ export const AIChatView: React.FC = () => {
 
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.lang = recognitionLang === 'ru-RU' ? 'ru-RU' : 'ro-RO';
-    utterance.rate = 0.95; // slightly deliberate pacing for language training
+    utterance.rate = 0.95;
 
-    // Pick appropriate system voice if available
     const voices = window.speechSynthesis.getVoices();
     const roVoice = voices.find(v => v.lang.startsWith('ro') || v.lang.includes('RON') || v.name.toLowerCase().includes('romanian'));
     const ruVoice = voices.find(v => v.lang.startsWith('ru') || v.name.toLowerCase().includes('russian'));
@@ -230,7 +252,6 @@ export const AIChatView: React.FC = () => {
       return;
     }
 
-    // Stop speaking if AI is talking
     stopSpeaking();
 
     try {
@@ -267,18 +288,6 @@ export const AIChatView: React.FC = () => {
     }
   };
 
-  const handleFetchAllModels = async () => {
-    setIsFetchingModels(true);
-    try {
-      const models = await fetchAvailableGeminiModels();
-      setAvailableApiModels(models);
-    } catch (err: any) {
-      alert(`Nu s-a putut încărca lista de modele: ${err.message}`);
-    } finally {
-      setIsFetchingModels(false);
-    }
-  };
-
   const handleSendMessage = async (textToSend?: string) => {
     const raw = textToSend || inputText;
     const clean = raw.trim();
@@ -289,7 +298,6 @@ export const AIChatView: React.FC = () => {
       return;
     }
 
-    // If user was speaking, stop recognition
     if (isListening && recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -311,10 +319,11 @@ export const AIChatView: React.FC = () => {
 
     try {
       const res = await sendChatMessage(
-        activeModel,
+        currentModelConfig.apiModel,
         newHistory.map(m => ({ role: m.role, text: m.text })),
         systemPrompt,
-        temperature
+        temperature,
+        currentModelConfig.candidateModels
       );
 
       const botMsgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -323,13 +332,12 @@ export const AIChatView: React.FC = () => {
         role: 'model',
         text: res.text,
         timestamp: Date.now(),
-        modelUsed: res.modelUsed,
+        modelUsed: currentModelConfig.name,
         latencyMs: res.latencyMs
       };
 
       setMessages(prev => [...prev, botMsg]);
 
-      // If autoSpeak is enabled, talk back immediately
       if (autoSpeak) {
         speakText(res.text, botMsgId);
       }
@@ -337,9 +345,9 @@ export const AIChatView: React.FC = () => {
       const errorMsg: ChatMessageItem = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         role: 'model',
-        text: `⚠️ Ошибка модели [${activeModel}]: ${err.message}`,
+        text: `⚠️ Ошибка модели [${currentModelConfig.name}]: ${err.message}`,
         timestamp: Date.now(),
-        modelUsed: activeModel,
+        modelUsed: currentModelConfig.name,
         error: err.message
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -400,20 +408,20 @@ export const AIChatView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
-                  AI Lab • Голосовой диалог с Gemini
+                  AI Lab • Голосовой диалог
                 </h1>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Radio className="w-2.5 h-2.5 text-purple-600 animate-pulse" />
-                  Голос / Live
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5 text-emerald-600 fill-emerald-600" />
+                  Безлимит
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Двусторонний голосовой диалог (микрофон 🎙️ $\leftrightarrow$ ответ голосом 🔊)
+                Двусторонний диалог: вы говорите в микрофон 🎙️ $\leftrightarrow$ нейросеть отвечает голосом 🔊
               </p>
             </div>
           </div>
 
-          {/* Model selector, Voice Toggle & Settings */}
+          {/* Model selector (strictly the 6 unlimited models) & controls */}
           <div className="flex items-center flex-wrap gap-2">
             {/* Auto-speech toggle */}
             <button
@@ -443,60 +451,20 @@ export const AIChatView: React.FC = () => {
               )}
             </button>
 
-            {/* Model selector dropdown */}
+            {/* Exclusive selector of the 6 unlimited models */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs">
               <span className="text-[11px] font-bold text-slate-500 pl-1.5 hidden sm:inline">Модель:</span>
               <select
-                value={isCustomModel ? '__custom__' : selectedModel}
-                onChange={e => {
-                  if (e.target.value === '__custom__') {
-                    setIsCustomModel(true);
-                  } else {
-                    setIsCustomModel(false);
-                    setSelectedModel(e.target.value);
-                  }
-                }}
-                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer max-w-[220px] truncate"
+                value={selectedModelKey}
+                onChange={e => setSelectedModelKey(e.target.value)}
+                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer max-w-[270px] truncate"
               >
-                <optgroup label="🚀 Быстрые Lite (Рекомендуемые)">
-                  {DEFAULT_PRESET_MODELS.filter(m => m.group === 'lite').map(m => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="⚡ Стандартные Flash">
-                  {DEFAULT_PRESET_MODELS.filter(m => m.group === 'flash').map(m => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="🧠 Pro / Extended Thinking">
-                  {DEFAULT_PRESET_MODELS.filter(m => m.group === 'pro').map(m => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="🎙️ Экспериментальные / Live / TTS / Transcribe">
-                  {DEFAULT_PRESET_MODELS.filter(m => m.group === 'experimental').map(m => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </optgroup>
-                {availableApiModels.length > 0 && (
-                  <optgroup label="🌐 Все модели из Google API">
-                    {availableApiModels.map(name => (
-                      <option key={`api-${name}`} value={name}>{name}</option>
-                    ))}
-                  </optgroup>
-                )}
-                <option value="__custom__">✏️ Ввести своё имя модели...</option>
+                {UNLIMITED_MODELS.map(m => (
+                  <option key={m.key} value={m.key}>
+                    {m.name}
+                  </option>
+                ))}
               </select>
-
-              <button
-                type="button"
-                onClick={handleFetchAllModels}
-                disabled={isFetchingModels}
-                title="Загрузить полный список всех доступных моделей из Google API"
-                className="p-1 text-slate-500 hover:text-purple-600 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isFetchingModels ? 'animate-spin text-purple-600' : ''}`} />
-              </button>
             </div>
 
             <button
@@ -525,19 +493,15 @@ export const AIChatView: React.FC = () => {
           </div>
         </div>
 
-        {/* Custom model name text input if custom selected */}
-        {isCustomModel && (
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-2">
-            <span className="text-xs font-bold text-purple-900 shrink-0">Имя модели:</span>
-            <input
-              type="text"
-              value={customModelInput}
-              onChange={e => setCustomModelInput(e.target.value)}
-              placeholder="например: gemini-3.5-flash или models/gemini-..."
-              className="flex-1 px-3 py-1 text-xs border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono"
-            />
-          </div>
-        )}
+        {/* Selected model description badge */}
+        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-2 text-xs">
+          <span className="font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md">
+            {currentModelConfig.name}
+          </span>
+          <span className="text-slate-500 truncate">
+            {currentModelConfig.description}
+          </span>
+        </div>
 
         {/* Collapsible System Prompt Settings */}
         {showSettings && (
@@ -610,7 +574,7 @@ export const AIChatView: React.FC = () => {
               Голосовой собеседник по румынскому языку
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mb-5">
-              Нажмите на 🎙️ микрофон снизу, чтобы сказать фразу голосом. ИИ распознает вашу речь и ответит голосом в реальном времени!
+              Нажмите на 🎙️ микрофон снизу, чтобы сказать фразу голосом. ИИ поймёт вашу речь и ответит голосом в реальном времени!
             </p>
 
             <div className="w-full max-w-lg space-y-2">
@@ -662,14 +626,13 @@ export const AIChatView: React.FC = () => {
                     <div className="flex items-center justify-between gap-3 mb-1.5 pb-1 border-b border-slate-100 text-[10px] text-slate-400 font-medium">
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
-                          {msg.modelUsed || activeModel}
+                          {msg.modelUsed || currentModelConfig.name}
                         </span>
                         {msg.latencyMs !== undefined && (
                           <span className="text-slate-400">⏱️ {msg.latencyMs} ms</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* Voice read-aloud button */}
                         {!isErr && (
                           <button
                             type="button"
@@ -724,13 +687,12 @@ export const AIChatView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedModel('gemini-flash-lite-latest');
-                          setIsCustomModel(false);
+                          setSelectedModelKey('gemini-3-flash-live');
                           handleSendMessage(messages.filter(m => m.role === 'user').slice(-1)[0]?.text);
                         }}
                         className="px-2.5 py-1 bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                       >
-                        Попробовать через Gemini Flash Lite
+                        Попробовать через Gemini 3 Flash Live
                       </button>
                     </div>
                   )}
@@ -754,7 +716,7 @@ export const AIChatView: React.FC = () => {
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-xs px-4 py-3 shadow-2xs flex items-center gap-2 text-xs text-purple-700 font-semibold">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" />
-              <span>Модель {activeModel} слушает и формулирует ответ...</span>
+              <span>Модель {currentModelConfig.name} слушает и формирует ответ...</span>
             </div>
           </div>
         )}

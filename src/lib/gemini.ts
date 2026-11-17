@@ -282,55 +282,71 @@ export async function fetchAvailableGeminiModels(): Promise<string[]> {
 }
 
 /**
- * Sends a multi-turn chat message to any selected Gemini model.
+ * Sends a multi-turn chat message to any selected Gemini model with optional candidate fallbacks.
  */
 export async function sendChatMessage(
   model: string,
   messages: { role: 'user' | 'model'; text: string }[],
   systemInstruction?: string,
-  temperature: number = 0.7
+  temperature: number = 0.7,
+  candidateModels?: string[]
 ): Promise<{ text: string; latencyMs: number; modelUsed: string }> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) throw new Error('Cheia API Gemini nu este configurată.');
 
+  const modelsToTry = candidateModels && candidateModels.length > 0
+    ? [model, ...candidateModels.filter(m => m !== model)]
+    : [model];
+
+  let lastError: Error | null = null;
   const startTime = Date.now();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  const payload: any = {
-    contents: messages.map(m => ({
-      role: m.role,
-      parts: [{ text: m.text }]
-    })),
-    generationConfig: {
-      temperature
-    }
-  };
+  for (const m of modelsToTry) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
 
-  if (systemInstruction && systemInstruction.trim()) {
-    payload.systemInstruction = {
-      parts: [{ text: systemInstruction.trim() }]
+    const payload: any = {
+      contents: messages.map(msg => ({
+        role: msg.role,
+        parts: [{ text: msg.text }]
+      })),
+      generationConfig: {
+        temperature
+      }
     };
+
+    if (systemInstruction && systemInstruction.trim()) {
+      payload.systemInstruction = {
+        parts: [{ text: systemInstruction.trim() }]
+      };
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const errMsg = errJson.error?.message || `HTTP ${res.status}`;
+        lastError = new Error(`[${m}] ${errMsg}`);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        lastError = new Error(`[${m}] Răspuns gol primit de la model.`);
+        continue;
+      }
+
+      const latencyMs = Date.now() - startTime;
+      return { text, latencyMs, modelUsed: m };
+    } catch (e: any) {
+      lastError = new Error(`[${m}] ${e.message}`);
+    }
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  const latencyMs = Date.now() - startTime;
-
-  if (!res.ok) {
-    const errJson = await res.json().catch(() => ({}));
-    const errMsg = errJson.error?.message || `HTTP ${res.status}`;
-    throw new Error(`[${model}] ${errMsg}`);
-  }
-
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error(`[${model}] Răspuns gol primit de la model.`);
-  }
-
-  return { text, latencyMs, modelUsed: model };
+  throw lastError || new Error(`Nu s-a putut obține răspuns de la modelul ${model}.`);
 }
