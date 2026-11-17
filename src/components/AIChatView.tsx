@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -26,7 +26,9 @@ import {
   Volume2,
   VolumeX,
   Radio,
-  Zap
+  Zap,
+  Phone,
+  PhoneOff
 } from 'lucide-react';
 
 export interface UnlimitedModel {
@@ -95,21 +97,21 @@ const SYSTEM_PROMPTS = [
     id: 'tutor_antem',
     title: '🎓 Преподаватель ANTEM (A1-A2)',
     text: `Ești un profesor universitar și evaluator expert de limba română (metodologia ANTEM, nivel A1-A2).
-Răspunde concis (2-4 fraze), prietenos și încurajator, potrivit pentru dialog oral. Folosește limba română curată (cu diacritice: ă, â, î, ș, ț). Dacă utilizatorul întreabă în rusă, explică regula scurt și oferă exemplul în română.`
+Răspunde concis (1-3 fraze scurte), prietenos și cald, ideal pentru conversație vie vorbită. Folosește limba română curată (cu diacritice). Dacă utilizatorul întreabă în rusă, explică regula scurt și oferă exemplul în română.`
   },
   {
     id: 'free_conversation',
     title: '💬 Собеседник из Кишинёва',
     text: `Ești un prieten vorbitor nativ de limba română din Chișinău.
-Porți un dialog vocal cald, prietenos și natural în limba română de zi cu zi. Răspunde cu replici scurte de conversație vie (1-3 fraze) și pune o întrebare de continuare.`
+Porți un dialog vocal cald, prietenos și natural în limba română de zi cu zi. Răspunde cu replici scurte de conversație vie (1-2 fraze) și pune o întrebare de continuare.`
   },
   {
     id: 'editor_proofreader',
     title: '✍️ Редактор и грамматический разбор',
     text: `Ești un lingvist și redactor riguros de limba română.
-Analizează fiecare frază a utilizatorului:
-1. Identifică greșelile de acord, conjugare, pronume clitice sau diacritice.
-2. Oferă varianta corectată cu explicație scurtă a regulii.`
+Analizează fraza utilizatorului:
+1. Identifică greșeala dacă există.
+2. Oferă varianta corectată cu explicație de o frază.`
   },
   {
     id: 'quiz_generator',
@@ -130,9 +132,7 @@ export const AIChatView: React.FC = () => {
   const { currentUser } = useAuth();
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'teacher';
 
-  // Default to Gemini 3 Flash Live (verified 200 OK responsive)
   const [selectedModelKey, setSelectedModelKey] = useState<string>('gemini-3-flash-live');
-
   const [selectedPromptId, setSelectedPromptId] = useState<string>('tutor_antem');
   const [systemPrompt, setSystemPrompt] = useState<string>(SYSTEM_PROMPTS[0].text);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -149,12 +149,26 @@ export const AIChatView: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // VOICE IN & VOICE OUT (Full-Duplex Audio Dialogue)
+  // Turn-based Voice
   const [isListening, setIsListening] = useState<boolean>(false);
   const [recognitionLang, setRecognitionLang] = useState<'ro-RO' | 'ru-RU'>('ro-RO');
   const [autoSpeak, setAutoSpeak] = useState<boolean>(true);
   const [currentlySpeakingId, setCurrentlySpeakingId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
+
+  // LIVE CALL MODE (Continuous Hands-Free Voice Dialogue)
+  const [isLiveCall, setIsLiveCall] = useState<boolean>(false);
+  const [callStatus, setCallStatus] = useState<'connecting' | 'listening' | 'thinking' | 'speaking'>('connecting');
+  const [callTranscriptUser, setCallTranscriptUser] = useState<string>('');
+  const [callTranscriptAi, setCallTranscriptAi] = useState<string>('');
+  const [isCallMuted, setIsCallMuted] = useState<boolean>(false);
+  const [callDurationSeconds, setCallDurationSeconds] = useState<number>(0);
+
+  const callRecognitionRef = useRef<any>(null);
+  const callSilenceTimerRef = useRef<any>(null);
+  const isCallActiveRef = useRef<boolean>(false);
+  const isCallMutedRef = useRef<boolean>(false);
+  const messagesRef = useRef<ChatMessageItem[]>(messages);
 
   const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
@@ -164,10 +178,39 @@ export const AIChatView: React.FC = () => {
 
   const currentModelConfig = UNLIMITED_MODELS.find(m => m.key === selectedModelKey) || UNLIMITED_MODELS[0];
 
-  // Auto-scroll to bottom of messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    isCallActiveRef.current = isLiveCall;
+  }, [isLiveCall]);
+
+  useEffect(() => {
+    isCallMutedRef.current = isCallMuted;
+  }, [isCallMuted]);
+
+  // Call duration counter
+  useEffect(() => {
+    let interval: any = null;
+    if (isLiveCall) {
+      interval = setInterval(() => {
+        setCallDurationSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      setCallDurationSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLiveCall]);
+
+  // Auto-scroll in standard chat view
+  useEffect(() => {
+    if (!isLiveCall) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isLoading, isLiveCall]);
 
   // Persist chat in localStorage
   useEffect(() => {
@@ -176,7 +219,7 @@ export const AIChatView: React.FC = () => {
     } catch (e) {}
   }, [messages]);
 
-  // Cleanup speech synthesis on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -187,15 +230,26 @@ export const AIChatView: React.FC = () => {
           recognitionRef.current.stop();
         } catch (e) {}
       }
+      if (callRecognitionRef.current) {
+        try {
+          callRecognitionRef.current.stop();
+        } catch (e) {}
+      }
+      if (callSilenceTimerRef.current) {
+        clearTimeout(callSilenceTimerRef.current);
+      }
     };
   }, []);
 
-  // Speak text using Web Speech API with clean Romanian pronunciation
-  const speakText = (text: string, msgId?: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  // Standard Voice Synthesis
+  const speakText = useCallback((text: string, msgId?: string, onEndCallback?: () => void) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
 
     window.speechSynthesis.cancel();
-    if (currentlySpeakingId === msgId) {
+    if (currentlySpeakingId === msgId && !isLiveCall) {
       setCurrentlySpeakingId(null);
       return;
     }
@@ -205,11 +259,14 @@ export const AIChatView: React.FC = () => {
       .replace(/https?:\/\/\S+/g, '')
       .trim();
 
-    if (!clean) return;
+    if (!clean) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
 
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.lang = recognitionLang === 'ru-RU' ? 'ru-RU' : 'ro-RO';
-    utterance.rate = 0.95;
+    utterance.rate = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
     const roVoice = voices.find(v => v.lang.startsWith('ro') || v.lang.includes('RON') || v.name.toLowerCase().includes('romanian'));
@@ -223,11 +280,18 @@ export const AIChatView: React.FC = () => {
 
     if (msgId) setCurrentlySpeakingId(msgId);
 
-    utterance.onend = () => setCurrentlySpeakingId(null);
-    utterance.onerror = () => setCurrentlySpeakingId(null);
+    utterance.onend = () => {
+      setCurrentlySpeakingId(null);
+      if (onEndCallback) onEndCallback();
+    };
+
+    utterance.onerror = () => {
+      setCurrentlySpeakingId(null);
+      if (onEndCallback) onEndCallback();
+    };
 
     window.speechSynthesis.speak(utterance);
-  };
+  }, [currentlySpeakingId, isLiveCall, recognitionLang]);
 
   const stopSpeaking = () => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -236,11 +300,11 @@ export const AIChatView: React.FC = () => {
     setCurrentlySpeakingId(null);
   };
 
-  // Toggle Voice Recording with SpeechRecognition
+  // Turn-based mic button toggle
   const toggleListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Recunoașterea vocală nu este suportată în acest browser. Vă rugăm să folosiți Google Chrome sau Microsoft Edge.');
+      alert('Recunoașterea vocală nu este suportată în acest browser. Folosiți Google Chrome sau Microsoft Edge.');
       return;
     }
 
@@ -271,8 +335,7 @@ export const AIChatView: React.FC = () => {
         setInputText(transcript);
       };
 
-      recognition.onerror = (event: any) => {
-        console.warn('Speech recognition notice:', event.error);
+      recognition.onerror = () => {
         setIsListening(false);
       };
 
@@ -288,6 +351,7 @@ export const AIChatView: React.FC = () => {
     }
   };
 
+  // Standard message submit
   const handleSendMessage = async (textToSend?: string) => {
     const raw = textToSend || inputText;
     const clean = raw.trim();
@@ -356,6 +420,215 @@ export const AIChatView: React.FC = () => {
     }
   };
 
+  // -------------------------------------------------------------
+  // CONTINUOUS HANDS-FREE LIVE CALL IMPLEMENTATION
+  // -------------------------------------------------------------
+  const processLiveCallTurn = async (userSpokenText: string) => {
+    if (!isCallActiveRef.current) return;
+    const clean = userSpokenText.trim();
+    if (!clean) return;
+
+    setCallStatus('thinking');
+
+    const userMsg: ChatMessageItem = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      role: 'user',
+      text: clean,
+      timestamp: Date.now()
+    };
+
+    const currentHistory = [...messagesRef.current, userMsg];
+    setMessages(currentHistory);
+    messagesRef.current = currentHistory;
+
+    try {
+      const res = await sendChatMessage(
+        currentModelConfig.apiModel,
+        currentHistory.map(m => ({ role: m.role, text: m.text })),
+        systemPrompt,
+        temperature,
+        currentModelConfig.candidateModels
+      );
+
+      if (!isCallActiveRef.current) return;
+
+      const botMsgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const botMsg: ChatMessageItem = {
+        id: botMsgId,
+        role: 'model',
+        text: res.text,
+        timestamp: Date.now(),
+        modelUsed: currentModelConfig.name,
+        latencyMs: res.latencyMs
+      };
+
+      const updatedHistory = [...currentHistory, botMsg];
+      setMessages(updatedHistory);
+      messagesRef.current = updatedHistory;
+      setCallTranscriptAi(res.text);
+
+      // Now speak the answer out loud
+      setCallStatus('speaking');
+      speakText(res.text, botMsgId, () => {
+        // When AI finishes speaking, immediately start listening to user again
+        if (isCallActiveRef.current) {
+          restartLiveRecognition();
+        }
+      });
+    } catch (err: any) {
+      if (!isCallActiveRef.current) return;
+      const errorText = `Nu am putut procesa răspunsul: ${err.message}`;
+      setCallTranscriptAi(errorText);
+      setCallStatus('speaking');
+      speakText('Scuze, a apărut o mică eroare de conexiune.', undefined, () => {
+        if (isCallActiveRef.current) restartLiveRecognition();
+      });
+    }
+  };
+
+  const restartLiveRecognition = () => {
+    if (!isCallActiveRef.current || isCallMutedRef.current) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (callRecognitionRef.current) {
+      try {
+        callRecognitionRef.current.stop();
+      } catch (e) {}
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = recognitionLang;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      setCallStatus('listening');
+
+      recognition.onstart = () => {
+        setCallStatus('listening');
+      };
+
+      recognition.onresult = (event: any) => {
+        if (!isCallActiveRef.current) return;
+
+        // BARGE-IN: If AI was speaking and user speaks, stop AI immediately!
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          setCallStatus('listening');
+        }
+
+        const transcript = Array.from(event.results)
+          .map((res: any) => res[0]?.transcript || '')
+          .join('');
+
+        setCallTranscriptUser(transcript);
+
+        if (callSilenceTimerRef.current) {
+          clearTimeout(callSilenceTimerRef.current);
+        }
+
+        // When user pauses for 800ms, trigger thinking and response
+        callSilenceTimerRef.current = setTimeout(() => {
+          if (transcript.trim().length > 0 && isCallActiveRef.current) {
+            try {
+              recognition.stop();
+            } catch (e) {}
+            processLiveCallTurn(transcript);
+          }
+        }, 800);
+      };
+
+      recognition.onerror = (e: any) => {
+        if (isCallActiveRef.current && e.error !== 'aborted') {
+          setTimeout(() => {
+            if (isCallActiveRef.current && callStatus !== 'speaking' && callStatus !== 'thinking') {
+              restartLiveRecognition();
+            }
+          }, 300);
+        }
+      };
+
+      recognition.onend = () => {
+        // If recognition closed but user didn't speak and call is still active, loop listening
+        if (isCallActiveRef.current && callStatus === 'listening') {
+          setTimeout(() => {
+            if (isCallActiveRef.current && callStatus === 'listening') {
+              restartLiveRecognition();
+            }
+          }, 200);
+        }
+      };
+
+      callRecognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: any) {
+      console.warn('Call recognition start notice:', err);
+    }
+  };
+
+  const startLiveCall = () => {
+    if (!isGeminiConfigured()) {
+      setShowKeyModal(true);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Recunoașterea vocală nu este suportată în acest browser. Folosiți Google Chrome sau Microsoft Edge.');
+      return;
+    }
+
+    setIsLiveCall(true);
+    isCallActiveRef.current = true;
+    setCallStatus('connecting');
+    setCallTranscriptUser('');
+
+    const greeting = 'Bună ziua! Sunt profesorul tău de limba română. Te ascult cu drag — despre ce vrei să discutăm astăzi?';
+    setCallTranscriptAi(greeting);
+
+    // Speak welcome greeting
+    setCallStatus('speaking');
+    setTimeout(() => {
+      speakText(greeting, undefined, () => {
+        if (isCallActiveRef.current) {
+          restartLiveRecognition();
+        }
+      });
+    }, 400);
+  };
+
+  const endLiveCall = () => {
+    setIsLiveCall(false);
+    isCallActiveRef.current = false;
+    setCallStatus('connecting');
+    stopSpeaking();
+
+    if (callRecognitionRef.current) {
+      try {
+        callRecognitionRef.current.stop();
+      } catch (e) {}
+    }
+    if (callSilenceTimerRef.current) {
+      clearTimeout(callSilenceTimerRef.current);
+    }
+  };
+
+  const toggleCallMute = () => {
+    const next = !isCallMuted;
+    setIsCallMuted(next);
+    isCallMutedRef.current = next;
+
+    if (next && callRecognitionRef.current) {
+      try {
+        callRecognitionRef.current.stop();
+      } catch (e) {}
+    } else if (!next && isLiveCall && callStatus === 'listening') {
+      restartLiveRecognition();
+    }
+  };
+
   const handleClearChat = () => {
     if (messages.length === 0) return;
     if (window.confirm('Sigur doriți să ștergeți întregul istoric al conversației?')) {
@@ -384,6 +657,12 @@ export const AIChatView: React.FC = () => {
     }
   };
 
+  const formatCallTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   if (!isStaff) {
     return (
       <div className="max-w-2xl mx-auto my-12 p-8 bg-white border border-slate-200 rounded-3xl text-center shadow-xs">
@@ -396,6 +675,161 @@ export const AIChatView: React.FC = () => {
     );
   }
 
+  // -------------------------------------------------------------
+  // FULL-SCREEN LIVE CALL INTERFACE (Hands-Free Conversation)
+  // -------------------------------------------------------------
+  if (isLiveCall) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col items-center justify-between min-h-[600px] h-[calc(100vh-8.5rem)] bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-950 rounded-3xl text-white shadow-2xl relative overflow-hidden border border-indigo-900/60">
+        {/* Background glow orbs */}
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Top Header in Call */}
+        <div className="w-full flex items-center justify-between z-10 pt-2">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-xs font-bold tracking-wider font-mono">
+              {formatCallTime(callDurationSeconds)}
+            </span>
+          </div>
+
+          <div className="text-center">
+            <span className="text-xs font-bold text-indigo-200 bg-indigo-950/80 border border-indigo-700/50 px-3 py-1 rounded-full uppercase tracking-wider block">
+              {currentModelConfig.name}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 text-xs font-bold">
+            <span>{recognitionLang === 'ro-RO' ? '🇷🇴 RO' : '🇷🇺 RU'}</span>
+          </div>
+        </div>
+
+        {/* Center: Teacher Avatar with Animated Soundwave Rings */}
+        <div className="flex flex-col items-center justify-center my-auto z-10 text-center">
+          <div className="relative flex items-center justify-center mb-6">
+            {/* Animated Sound Wave Rings */}
+            {callStatus === 'speaking' && (
+              <>
+                <div className="absolute w-48 h-48 rounded-full border-2 border-purple-400/40 animate-ping" />
+                <div className="absolute w-40 h-40 rounded-full bg-purple-500/20 animate-pulse" />
+              </>
+            )}
+            {callStatus === 'listening' && (
+              <>
+                <div className="absolute w-44 h-44 rounded-full border border-emerald-400/50 animate-ping" />
+                <div className="absolute w-36 h-36 rounded-full bg-emerald-500/20 animate-pulse" />
+              </>
+            )}
+            {callStatus === 'thinking' && (
+              <div className="absolute w-36 h-36 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+            )}
+
+            {/* Avatar Circle */}
+            <div className={`w-28 h-28 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative z-10 ${
+              callStatus === 'speaking'
+                ? 'bg-gradient-to-tr from-purple-500 to-indigo-500 ring-4 ring-purple-300 shadow-purple-500/50'
+                : callStatus === 'listening'
+                ? 'bg-gradient-to-tr from-emerald-500 to-teal-500 ring-4 ring-emerald-300 shadow-emerald-500/50'
+                : callStatus === 'thinking'
+                ? 'bg-gradient-to-tr from-indigo-600 to-purple-600 ring-4 ring-indigo-300'
+                : 'bg-slate-700 ring-4 ring-slate-600'
+            }`}>
+              <Bot className="w-14 h-14 text-white" />
+            </div>
+          </div>
+
+          <h3 className="text-xl font-extrabold tracking-tight mb-1 text-white">
+            Profesor ANTEM (Chișinău)
+          </h3>
+
+          <div className="flex items-center gap-2 mb-4">
+            {callStatus === 'listening' && (
+              <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-500/40 animate-pulse">
+                <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                Слушаю вас... Говорите свободно!
+              </span>
+            )}
+            {callStatus === 'speaking' && (
+              <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5 bg-purple-950/60 px-3 py-1 rounded-full border border-purple-500/40">
+                <Volume2 className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                Репетитор говорит...
+              </span>
+            )}
+            {callStatus === 'thinking' && (
+              <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5 bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-500/40">
+                <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                Думает над ответом...
+              </span>
+            )}
+            {callStatus === 'connecting' && (
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-full">
+                Подключение к линии...
+              </span>
+            )}
+          </div>
+
+          {/* Subtitles / Live Transcript Box */}
+          <div className="w-full max-w-lg min-h-[90px] bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 text-center flex flex-col justify-center shadow-lg">
+            {callStatus === 'listening' && callTranscriptUser ? (
+              <p className="text-sm font-medium text-emerald-200 italic">
+                „{callTranscriptUser}”
+              </p>
+            ) : callTranscriptAi ? (
+              <p className="text-sm font-medium text-slate-100 leading-relaxed">
+                {callTranscriptAi}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 italic">
+                Начните говорить на румынском, репетитор сразу подхватит диалог...
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Call Controls */}
+        <div className="w-full flex items-center justify-center gap-6 z-10 pb-4">
+          {/* Mute button */}
+          <button
+            type="button"
+            onClick={toggleCallMute}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-lg ${
+              isCallMuted
+                ? 'bg-amber-500 text-white'
+                : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
+            }`}
+            title={isCallMuted ? 'Включить микрофон' : 'Отключить микрофон'}
+          >
+            {isCallMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+          </button>
+
+          {/* Hang Up (End Call) Button */}
+          <button
+            type="button"
+            onClick={endLiveCall}
+            className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-xl shadow-rose-600/50 transition-all active:scale-90 cursor-pointer"
+            title="Завершить звонок"
+          >
+            <PhoneOff className="w-7 h-7" />
+          </button>
+
+          {/* Language Switcher */}
+          <button
+            type="button"
+            onClick={() => setRecognitionLang(recognitionLang === 'ro-RO' ? 'ru-RU' : 'ro-RO')}
+            className="w-14 h-14 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 flex flex-col items-center justify-center transition-all active:scale-95 cursor-pointer text-xs font-bold"
+            title="Переключить язык"
+          >
+            <span>{recognitionLang === 'ro-RO' ? 'RO' : 'RU'}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // STANDARD CHAT & SETTINGS INTERFACE
+  // -------------------------------------------------------------
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-24 sm:pb-8 flex flex-col h-[calc(100vh-8.5rem)] min-h-[550px]">
       {/* Top Header Card */}
@@ -421,8 +855,19 @@ export const AIChatView: React.FC = () => {
             </div>
           </div>
 
-          {/* Model selector (strictly the 6 unlimited models) & controls */}
+          {/* Model selector & Action Buttons */}
           <div className="flex items-center flex-wrap gap-2">
+            {/* BIG LIVE CALL BUTTON */}
+            <button
+              type="button"
+              onClick={startLiveCall}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 ring-2 ring-emerald-300 animate-pulse"
+              title="Начать непрерывный живой телефонный звонок с репетитором без нажатия кнопок"
+            >
+              <Phone className="w-3.5 h-3.5 fill-white" />
+              <span>Позвонить репетитору</span>
+            </button>
+
             {/* Auto-speech toggle */}
             <button
               type="button"
@@ -457,7 +902,7 @@ export const AIChatView: React.FC = () => {
               <select
                 value={selectedModelKey}
                 onChange={e => setSelectedModelKey(e.target.value)}
-                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer max-w-[270px] truncate"
+                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer max-w-[240px] truncate"
               >
                 {UNLIMITED_MODELS.map(m => (
                   <option key={m.key} value={m.key}>
@@ -494,12 +939,18 @@ export const AIChatView: React.FC = () => {
         </div>
 
         {/* Selected model description badge */}
-        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-2 text-xs">
-          <span className="font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md">
-            {currentModelConfig.name}
-          </span>
-          <span className="text-slate-500 truncate">
-            {currentModelConfig.description}
+        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md">
+              {currentModelConfig.name}
+            </span>
+            <span className="text-slate-500 truncate">
+              {currentModelConfig.description}
+            </span>
+          </div>
+
+          <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full hidden sm:inline">
+            ⚡ Живой звонок без ожидания
           </span>
         </div>
 
@@ -573,9 +1024,18 @@ export const AIChatView: React.FC = () => {
             <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1">
               Голосовой собеседник по румынскому языку
             </h3>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-md mb-5">
-              Нажмите на 🎙️ микрофон снизу, чтобы сказать фразу голосом. ИИ поймёт вашу речь и ответит голосом в реальном времени!
+            <p className="text-xs sm:text-sm text-slate-500 max-w-md mb-4">
+              Нажмите кнопку <strong>«📞 Позвонить репетитору»</strong> сверху, чтобы начать живой разговор без нажатия клавиш, или отправьте сообщение ниже:
             </p>
+
+            <button
+              type="button"
+              onClick={startLiveCall}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2 mb-6"
+            >
+              <Phone className="w-4 h-4 fill-white" />
+              <span>Начать живой разговор с репетитором</span>
+            </button>
 
             <div className="w-full max-w-lg space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
