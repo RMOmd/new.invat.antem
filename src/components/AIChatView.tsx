@@ -335,12 +335,43 @@ export const AIChatView: React.FC = () => {
     setCurrentlySpeakingId(null);
   };
 
+  // Merge progressive hypotheses or consecutive speech chunks without duplicating repeated phrases
+  const mergeSpeechChunks = (existing: string, incoming: string): string => {
+    const a = existing.trim();
+    const b = incoming.trim();
+    if (!a) return b;
+    if (!b) return a;
+    if (a.toLowerCase() === b.toLowerCase()) return a;
+
+    // 1. If incoming starts with existing (progressive hypothesis replacement on Android)
+    if (b.toLowerCase().startsWith(a.toLowerCase())) return b;
+
+    // 2. If existing starts with incoming (earlier hypothesis was longer/duplicate)
+    if (a.toLowerCase().startsWith(b.toLowerCase())) return a;
+
+    // 3. Word-level overlap resolution (e.g. "Eu sunt Alexandra" + "Alexandra unde locuiești")
+    const aWords = a.split(/\s+/);
+    const bWords = b.split(/\s+/);
+    const maxOverlap = Math.min(aWords.length, bWords.length);
+
+    for (let len = maxOverlap; len > 0; len--) {
+      const aTail = aWords.slice(aWords.length - len).join(' ').toLowerCase();
+      const bHead = bWords.slice(0, len).join(' ').toLowerCase();
+      if (aTail === bHead) {
+        const remainder = bWords.slice(len).join(' ');
+        return remainder ? `${a} ${remainder}` : a;
+      }
+    }
+
+    // 4. Distinct sentences/clauses
+    return `${a} ${b}`;
+  };
+
   // Helper to extract clean, deduplicated speech transcript across all browsers (especially mobile Android Chrome)
   const extractCleanTranscript = (event: any): string => {
     if (!event || !event.results) return '';
 
-    let finalResult = '';
-    let interimResult = '';
+    let merged = '';
 
     for (let i = 0; i < event.results.length; ++i) {
       const res = event.results[i];
@@ -348,33 +379,10 @@ export const AIChatView: React.FC = () => {
       const chunk = (res[0].transcript || '').trim();
       if (!chunk) continue;
 
-      if (res.isFinal) {
-        if (!finalResult) {
-          finalResult = chunk;
-        } else if (!finalResult.endsWith(chunk) && !chunk.startsWith(finalResult)) {
-          finalResult = `${finalResult} ${chunk}`;
-        } else if (chunk.length > finalResult.length && chunk.startsWith(finalResult)) {
-          finalResult = chunk;
-        }
-      } else {
-        interimResult = chunk;
-      }
+      merged = mergeSpeechChunks(merged, chunk);
     }
 
-    let combined = '';
-    if (finalResult && interimResult) {
-      if (interimResult.startsWith(finalResult)) {
-        combined = interimResult;
-      } else if (finalResult.endsWith(interimResult)) {
-        combined = finalResult;
-      } else {
-        combined = `${finalResult} ${interimResult}`;
-      }
-    } else {
-      combined = finalResult || interimResult;
-    }
-
-    return combined.replace(/\s+/g, ' ').trim();
+    return merged.replace(/\s+/g, ' ').trim();
   };
 
   // Turn-based mic button toggle
