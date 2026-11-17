@@ -55,10 +55,14 @@ export function clearGeminiApiKey() {
 }
 
 const CANDIDATE_MODELS = [
+  // Fast, high-capacity Lite models that avoid Google 503 queue spikes
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3-flash-preview',
+  'gemini-flash-latest',
   'gemini-3.5-flash',
-  'gemini-3.8-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-flash-latest'
+  'gemini-3.8-flash'
 ];
 
 /**
@@ -124,6 +128,8 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
   let lastError: Error | null = null;
 
   for (const model of CANDIDATE_MODELS) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const response = await fetch(url, {
@@ -131,6 +137,7 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
         headers: {
           'Content-Type': 'application/json'
         },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [
             {
@@ -144,13 +151,16 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
           }
         })
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
         const errMsg = errJson.error?.message || `HTTP ${response.status}`;
         console.warn(`Model ${model} returned error: ${errMsg}`);
-        if (response.status === 404 || response.status === 503 || response.status === 400) {
+        if (response.status === 404 || response.status === 503 || response.status === 429 || response.status === 400) {
           lastError = new Error(`Model ${model}: ${errMsg}`);
+          // brief pause before trying next candidate model to avoid rapid 503 collisions
+          await new Promise(r => setTimeout(r, 350));
           continue;
         }
         throw new Error(`Eroare Gemini (${model}): ${errMsg}`);
@@ -165,6 +175,7 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
       const parsed: AIEvaluationResult = JSON.parse(rawText);
       return parsed;
     } catch (err: any) {
+      clearTimeout(timeoutId);
       lastError = err;
       if (err.message?.includes('JSON')) {
         throw new Error('Eroare la parsarea evaluării AI: ' + err.message);
