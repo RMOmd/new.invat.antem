@@ -442,7 +442,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser?.id, syncAllFromDatabase]);
 
-  // Long-lived real-time subscriptions and window focus/interval polling
+  // Long-lived real-time subscriptions and window focus/visibility sync
   useEffect(() => {
     // When returning to tab or window focus, only sync if logged in and it has been at least 30 seconds
     const handleFocusOrVisible = () => {
@@ -458,17 +458,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('focus', handleFocusOrVisible);
     document.addEventListener('visibilitychange', handleFocusOrVisible);
     window.addEventListener('online', handleFocusOrVisible);
-
-    // Light background sync interval: 120 seconds (2 minutes), only when user is logged in
-    const interval = setInterval(() => {
-      if (!currentUserRef.current) return;
-      if (document.visibilityState === 'visible') {
-        const timeSinceLastSync = Date.now() - lastSyncTimestampRef.current;
-        if (timeSinceLastSync > 60000) {
-          syncAllFromDatabase();
-        }
-      }
-    }, 120000);
 
     const supabase = getSupabase();
     let subsChannel: any = null;
@@ -529,7 +518,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('focus', handleFocusOrVisible);
       document.removeEventListener('visibilitychange', handleFocusOrVisible);
       window.removeEventListener('online', handleFocusOrVisible);
-      clearInterval(interval);
       if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
       if (authSub && typeof authSub.unsubscribe === 'function') {
         authSub.unsubscribe();
