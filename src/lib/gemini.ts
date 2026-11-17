@@ -156,30 +156,42 @@ Evaluează textul și returnează analiza conform schemei JSON specificate.`;
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
         const errMsg = errJson.error?.message || `HTTP ${response.status}`;
-        console.warn(`Model ${model} returned error: ${errMsg}`);
-        if (response.status === 404 || response.status === 503 || response.status === 429 || response.status === 400) {
-          lastError = new Error(`Model ${model}: ${errMsg}`);
-          // brief pause before trying next candidate model to avoid rapid 503 collisions
-          await new Promise(r => setTimeout(r, 350));
-          continue;
-        }
-        throw new Error(`Eroare Gemini (${model}): ${errMsg}`);
+        console.warn(`Model ${model} failed (${response.status}): ${errMsg}. Falling back to next model...`);
+        lastError = new Error(`Model ${model}: ${errMsg}`);
+        // brief pause before trying next candidate model to avoid rapid request collisions
+        await new Promise(r => setTimeout(r, 300));
+        continue;
       }
 
       const data = await response.json();
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) {
-        throw new Error('Răspunsul primit de la Gemini este gol.');
+        console.warn(`Model ${model} returned empty response. Falling back to next model...`);
+        lastError = new Error(`Model ${model} returned empty response.`);
+        continue;
       }
 
-      const parsed: AIEvaluationResult = JSON.parse(rawText);
-      return parsed;
+      // Clean markdown codeblocks if model returned ```json ... ```
+      const cleaned = rawText
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+
+      try {
+        const parsed: AIEvaluationResult = JSON.parse(cleaned);
+        return parsed;
+      } catch (parseErr: any) {
+        console.warn(`Model ${model} returned invalid JSON: ${parseErr.message}. Falling back to next model...`);
+        lastError = new Error(`Model ${model} JSON parse error: ${parseErr.message}`);
+        continue;
+      }
     } catch (err: any) {
       clearTimeout(timeoutId);
-      lastError = err;
-      if (err.message?.includes('JSON')) {
-        throw new Error('Eroare la parsarea evaluării AI: ' + err.message);
-      }
+      const isTimeout = err.name === 'AbortError';
+      const msg = isTimeout ? 'Timed out after 12s' : err.message;
+      console.warn(`Model ${model} error (${msg}). Falling back to next model...`);
+      lastError = new Error(`Model ${model}: ${msg}`);
+      await new Promise(r => setTimeout(r, 200));
     }
   }
 
