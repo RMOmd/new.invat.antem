@@ -338,15 +338,24 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
   const { processedBodyHtml, audioSlots } = useMemo(() => {
     if (!activity.bodyHtml) return { processedBodyHtml: '', audioSlots: [] };
     const slots: { id: string; src: string }[] = [];
+    const seenSrcs = new Set<string>();
     let slotIdx = 0;
     const transformed = activity.bodyHtml.replace(
       /<audio[^>]*>[\s\S]*?<\/audio>|<audio[^>]*\/>/gi,
       (match) => {
         const srcMatch = match.match(/src=["']([^"']+)["']/i);
-        const src = srcMatch ? srcMatch[1] : '';
-        if (!src) return '';
+        const rawSrc = srcMatch ? srcMatch[1] : '';
+        if (!rawSrc) return '';
+        // Normalize filename (strip query params, leading paths, media/, and prefix IDs like 6872_)
+        const cleanBase = rawSrc.split('?')[0].split('#')[0];
+        const normSrc = cleanBase.replace(/^.*[\\/]/, '').replace(/^\d+_/i, '').toLowerCase();
+        if (seenSrcs.has(normSrc)) {
+          return ''; // Strip duplicate audio element from bodyHtml
+        }
+        seenSrcs.add(normSrc);
+
         const slotId = `custom-audio-slot-${activity.id}-${slotIdx++}`;
-        slots.push({ id: slotId, src });
+        slots.push({ id: slotId, src: rawSrc });
         return `<div id="${slotId}" class="my-4 not-prose"></div>`;
       }
     );

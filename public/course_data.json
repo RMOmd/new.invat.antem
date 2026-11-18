@@ -4879,7 +4879,7 @@
           "title": "5. C. Dialog / Pag 1",
           "instructions": "Unitatea 5. Unde este bulevardul Dacia?1. Ascultați și restabiliți dialogul.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 5. Unde este bulevardul Dacia?</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit5_7.mp3\" type=\"audio/mpeg\"/></audio><p> </p><img alt=\"Ascultați și restabiliți dialogul.\" class=\"tooltip\" src=\"media/act_2222_img12.jpg\" style=\"width: 100%; height: auto; max-width: 500px; display: block; margin: 0 auto; cursor: pointer; position: relative;\" title=\"Ascultați și restabiliți dialogul.\"/><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit5_7.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit5_7.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 5. Unde este bulevardul Dacia?</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit5_7.mp3\" type=\"audio/mpeg\"/></audio><p> </p><img alt=\"Ascultați și restabiliți dialogul.\" class=\"tooltip\" src=\"media/act_2222_img12.jpg\" style=\"width: 100%; height: auto; max-width: 500px; display: block; margin: 0 auto; cursor: pointer; position: relative;\" title=\"Ascultați și restabiliți dialogul.\"/><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "unit5_7.mp3",
             "9618_img12.jpg",
@@ -6811,7 +6811,7 @@
           "title": "7. C. Dialog / Pag 2",
           "instructions": "Unitatea 7. Casa în care locuiesc2. Ascultați și restabiliți dialogulCăutăm un apartament.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 7. Casa în care locuiesc</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">2. Ascultați și restabiliți dialogul <i>Căutăm un apartament</i>.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit7_6.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit7_6.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit7_6.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 7. Casa în care locuiesc</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">2. Ascultați și restabiliți dialogul <i>Căutăm un apartament</i>.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit7_6.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "6872_unit7_6.mp3",
             "unit7_6.mp3"
@@ -8771,7 +8771,7 @@
           "title": "9. C. Dialog / Pag 1",
           "instructions": "Unitatea 9. După cumpărături1. Ascultați și restabiliți dialogul.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 9. După cumpărături</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit9_4.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit9_4.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit9_4.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 9. După cumpărături</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit9_4.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "6887_unit9_4.mp3",
             "unit9_4.mp3"
@@ -9430,7 +9430,7 @@
           "title": "10. C. Dialog / Pag 1",
           "instructions": "Unitatea 10. Mâncăm în oraș1. Ascultați și restabiliți dialogul.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 10. Mâncăm în oraș</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit10_4.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit10_4.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit10_4.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 10. Mâncăm în oraș</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit10_4.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "6915_unit10_4.mp3",
             "unit10_4.mp3"
@@ -12215,7 +12215,7 @@
           "title": "14. C. Dialog / Pag 3",
           "instructions": "Unitatea 14. Servicii3. Ascultați și restabiliți dialogul.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 14. Servicii</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">3. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit14_4.mp3\" type=\"audio/mpeg\"/></audio><p> </p><img alt=\"Ascultați și restabiliți dialogul.\" class=\"tooltip\" src=\"media/act_2405_img09.jpg\" style=\"width: 100%; height: auto; max-width: 249px; display: block; margin: 0 auto; cursor: pointer; position: relative;\" title=\"Ascultați și restabiliți dialogul.\"/><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit14_4.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit14_4.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 14. Servicii</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">3. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit14_4.mp3\" type=\"audio/mpeg\"/></audio><p> </p><img alt=\"Ascultați și restabiliți dialogul.\" class=\"tooltip\" src=\"media/act_2405_img09.jpg\" style=\"width: 100%; height: auto; max-width: 249px; display: block; margin: 0 auto; cursor: pointer; position: relative;\" title=\"Ascultați și restabiliți dialogul.\"/><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "unit14_4.mp3",
             "9801_img09.jpg",
@@ -12715,7 +12715,7 @@
           "title": "15. C. Dialog / Pag 1",
           "instructions": "Unitatea 15. La poliția de frontieră1. Ascultați și restabiliți dialogul.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 15. La poliția de frontieră</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit15_6.mp3\" type=\"audio/mpeg\"/></audio><p> </p><img alt=\"Ascultați și restabiliți dialogul.\" class=\"tooltip\" src=\"media/act_2422_img13.jpg\" style=\"width: 100%; height: auto; max-width: 256px; display: block; margin: 0 auto; cursor: pointer; position: relative;\" title=\"Ascultați și restabiliți dialogul.\"/><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit15_6.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit15_6.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 15. La poliția de frontieră</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit15_6.mp3\" type=\"audio/mpeg\"/></audio><p> </p><img alt=\"Ascultați și restabiliți dialogul.\" class=\"tooltip\" src=\"media/act_2422_img13.jpg\" style=\"width: 100%; height: auto; max-width: 256px; display: block; margin: 0 auto; cursor: pointer; position: relative;\" title=\"Ascultați și restabiliți dialogul.\"/><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "unit15_6.mp3",
             "9818_img13.jpg",
@@ -13717,7 +13717,7 @@
           "title": "17. C. Dialog / Pag 1",
           "instructions": "Unitatea 17. La un interviu1. Ascultați și restabiliți dialogul.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 17. La un interviu</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit17_6.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit17_6.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit17_6.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 17. La un interviu</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">1. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit17_6.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "unit17_6.mp3"
           ],
@@ -13739,7 +13739,7 @@
           "title": "17. C. Dialog / Pag 2",
           "instructions": "Unitatea 17. La un interviu2. Ascultați și restabiliți dialogul.",
           "readingHtml": "",
-          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 17. La un interviu</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">2. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit17_7.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><audio controls=\"\" name=\"media\" src=\"media/unit17_7.mp3\" style=\"width: 100%; max-width: 650px; margin: 1.25rem auto; display: block;\"><source src=\"media/unit17_7.mp3\" type=\"audio/mpeg\"/></audio><p>&nbsp;</p>",
+          "bodyHtml": "<div id=\"Instructions\"><h2 style=\"font-weight: bold; color: #2a2774;\">Unitatea 17. La un interviu</h2><div class=\"play_icon\"></div><p style=\"font-size: 16px; font-weight: bold; color: #5c4d58; line-height: 35px;\">2. Ascultați și restabiliți dialogul.</p><p> </p><audio controls=\"\" name=\"media\" style=\"width: 50%; margin: 0 auto; display: block;\"><source src=\"media/unit17_7.mp3\" type=\"audio/mpeg\"/></audio><p> </p></div>\n<p>&nbsp;</p><p>&nbsp;</p>",
           "media": [
             "7216_unit17_7.mp3",
             "unit17_7.mp3"
