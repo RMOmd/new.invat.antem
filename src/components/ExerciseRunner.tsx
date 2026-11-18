@@ -340,25 +340,29 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
     const slots: { id: string; src: string }[] = [];
     const seenSrcs = new Set<string>();
     let slotIdx = 0;
-    const transformed = activity.bodyHtml.replace(
-      /<audio[^>]*>[\s\S]*?<\/audio>|<audio[^>]*\/>/gi,
-      (match) => {
-        const srcMatch = match.match(/src=["']([^"']+)["']/i);
-        const rawSrc = srcMatch ? srcMatch[1] : '';
-        if (!rawSrc) return '';
-        // Normalize filename (strip query params, leading paths, media/, and prefix IDs like 6872_)
-        const cleanBase = rawSrc.split('?')[0].split('#')[0];
-        const normSrc = cleanBase.replace(/^.*[\\/]/, '').replace(/^\d+_/i, '').toLowerCase();
-        if (seenSrcs.has(normSrc)) {
-          return ''; // Strip duplicate audio element from bodyHtml
-        }
-        seenSrcs.add(normSrc);
+    const transformed = activity.bodyHtml
+      .replace(
+        /<audio[^>]*>[\s\S]*?<\/audio>|<audio[^>]*\/>/gi,
+        (match) => {
+          const srcMatch = match.match(/src=["']([^"']+)["']/i);
+          const rawSrc = srcMatch ? srcMatch[1] : '';
+          if (!rawSrc) return '';
+          // Normalize filename (strip query params, leading paths, media/, and prefix IDs like 6872_)
+          const cleanBase = rawSrc.split('?')[0].split('#')[0];
+          const normSrc = cleanBase.replace(/^.*[\\/]/, '').replace(/^\d+_/i, '').toLowerCase();
+          if (seenSrcs.has(normSrc)) {
+            return ''; // Strip duplicate audio element from bodyHtml
+          }
+          seenSrcs.add(normSrc);
 
-        const slotId = `custom-audio-slot-${activity.id}-${slotIdx++}`;
-        slots.push({ id: slotId, src: rawSrc });
-        return `<div id="${slotId}" class="my-4 not-prose"></div>`;
-      }
-    );
+          const slotId = `custom-audio-slot-${activity.id}-${slotIdx++}`;
+          slots.push({ id: slotId, src: rawSrc });
+          return `<div id="${slotId}" class="my-4 not-prose"></div>`;
+        }
+      )
+      // Neutralize legacy inline handlers from HotPotatoes / ANTEM (LeaveGap, TrackFocus)
+      .replace(/\s+onblur=["'](?:LeaveGap|TrackFocus)\([^"']*?\)\s*;?["']/gi, '')
+      .replace(/\s+onfocus=["'](?:LeaveGap|TrackFocus)\([^"']*?\)\s*;?["']/gi, '');
     return { processedBodyHtml: transformed, audioSlots: slots };
   }, [activity.bodyHtml, activity.id]);
 
@@ -565,6 +569,7 @@ export const ExerciseRunner: React.FC<ExerciseRunnerProps> = ({
       el.onfocus = () => {
         setActiveGapIndex(gapIdx);
       };
+      el.onblur = null;
 
       el.classList.remove('gap-correct', 'gap-wrong');
       if (checked) {
